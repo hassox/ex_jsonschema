@@ -1,0 +1,49 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Guidelines for development approach focusing on API-driven design, clean interfaces, and progressive refinement of code.
+globs: 
+---
+
+# Development Approach Guidelines
+
+## API-Driven Design
+
+- Design your API and types before implementation
+- Focus on how users will interact with your code
+- Create clean, intuitive interfaces that are discoverable
+- Document the "why" behind API design decisions
+- Design for composition and extension
+
+## Public APIs and Encapsulation
+
+- Only export public APIs from files
+- Maintain proper encapsulation boundaries
+- Consider what should remain private and what should be exposed
+
+## Configuration Philosophy
+
+- Make components configurable with sensible defaults
+- Use optional parameters with default values
+- Design for the common case, but allow for customization
+- Be conservative in what you expose, liberal in what you accept
+- Document configuration options clearly
+
+## Progressive Refinement
+
+- First, make it possible (focus on functionality)
+- Second, make it beautiful (improve API design and usage)
+- Third, make it fast (optimize only when necessary)
+- Avoid premature optimization
+- Refactor continuously to improve code quality
+
+## Type Usage
+
+- Use existing types/structs from the codebase or libraries whenever possible
+- Do not duplicate types that already exist
+- Read documentation before implementing solutions
+- Contribute to existing type systems rather than creating parallel ones
+- Prefer extending existing types over creating new ones

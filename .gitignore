@@ -1,0 +1,65 @@
+# Elixir/Erlang
+/_build/
+/cover/
+/deps/
+/doc/
+erl_crash.dump
+*.ez
+*.beam
+*.plt
+*.tar
+
+# Mix
+.mix/
+mix.lock.backup
+
+# Hex
+ex_jsonschema-*.tar
+*.tar.gz
+
+# Testing
+/tmp/
+.eunit/
+
+# Rust/Cargo
+/native/*/target/
+/native/**/target/
+Cargo.lock.backup
+**/*.rs.bk
+*.pdb
+
+# Precompiled NIFs
+/priv/native/
+*.so
+*.dll
+*.dylib
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vim/
+.netrwhist
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

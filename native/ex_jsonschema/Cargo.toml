@@ -1,0 +1,17 @@
+[package]
+name = "ex_jsonschema"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "ex_jsonschema"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.36"
+jsonschema = { version = "0.20", default-features = false }
+serde_json = "1.0"
+thiserror = "1.0"
+
+[features]
+default = [] 

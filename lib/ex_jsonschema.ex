@@ -29,7 +29,7 @@ defmodule ExJsonschema do
 
   """
 
-  alias ExJsonschema.{Native, ValidationError, CompilationError}
+  alias ExJsonschema.{CompilationError, Native, ValidationError}
 
   @type compiled_schema :: reference()
   @type json_string :: String.t()
@@ -71,8 +71,11 @@ defmodule ExJsonschema do
   @spec compile!(json_string()) :: compiled_schema()
   def compile!(schema_json) when is_binary(schema_json) do
     case compile(schema_json) do
-      {:ok, compiled} -> compiled
-      {:error, %CompilationError{} = error} -> raise ArgumentError, "Failed to compile schema: #{error}"
+      {:ok, compiled} ->
+        compiled
+
+      {:error, %CompilationError{} = error} ->
+        raise ArgumentError, "Failed to compile schema: #{error}"
     end
   end
 
@@ -92,13 +95,18 @@ defmodule ExJsonschema do
 
   """
   @spec validate(compiled_schema(), json_string()) :: validation_result()
-  def validate(compiled_schema, instance_json) when is_reference(compiled_schema) and is_binary(instance_json) do
+  def validate(compiled_schema, instance_json)
+      when is_reference(compiled_schema) and is_binary(instance_json) do
     case Native.validate_detailed(compiled_schema, instance_json) do
-      :ok -> :ok
+      :ok ->
+        :ok
+
       {:error, error_list} when is_list(error_list) ->
         errors = Enum.map(error_list, &ValidationError.from_map/1)
         {:error, errors}
-      {:error, _reason} -> {:error, [:validation_error]}
+
+      {:error, _reason} ->
+        {:error, [:validation_error]}
     end
   end
 
@@ -137,8 +145,9 @@ defmodule ExJsonschema do
 
   """
   @spec valid?(compiled_schema(), json_string()) :: boolean()
-  def valid?(compiled_schema, instance_json) when is_reference(compiled_schema) and is_binary(instance_json) do
-    Native.is_valid(compiled_schema, instance_json)
+  def valid?(compiled_schema, instance_json)
+      when is_reference(compiled_schema) and is_binary(instance_json) do
+    Native.valid?(compiled_schema, instance_json)
   end
 
   @doc """
@@ -156,7 +165,8 @@ defmodule ExJsonschema do
       true
 
   """
-  @spec validate_once(json_string(), json_string()) :: validation_result() | {:error, CompilationError.t()}
+  @spec validate_once(json_string(), json_string()) ::
+          validation_result() | {:error, CompilationError.t()}
   def validate_once(schema_json, instance_json) do
     with {:ok, compiled} <- compile(schema_json) do
       validate(compiled, instance_json)

@@ -9,14 +9,14 @@ defmodule ExJsonschema.MixProject do
     [
       app: :ex_jsonschema,
       version: @version,
-      elixir: "~> 1.12",
+      elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: @description,
       package: package(),
       docs: docs(),
       rustler_crates: rustler_crates(),
-      
+
       # Additional metadata for better discoverability
       name: "ExJsonschema",
       source_url: @source_url,
@@ -77,9 +77,9 @@ defmodule ExJsonschema.MixProject do
       source_url: @source_url,
       formatters: ["html"],
       groups_for_modules: [
-        "Core": [ExJsonschema],
-        "Errors": [ExJsonschema.ValidationError, ExJsonschema.CompilationError],
-        "Internal": [ExJsonschema.Native]
+        Core: [ExJsonschema],
+        Errors: [ExJsonschema.ValidationError, ExJsonschema.CompilationError],
+        Internal: [ExJsonschema.Native]
       ]
     ]
   end

@@ -40,9 +40,9 @@ impl CompiledSchema {
     fn new(schema: Value) -> Result<Self, JsonSchemaError> {
         let validator = jsonschema::validator_for(&schema)
             .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?;
-        
-        Ok(CompiledSchema { 
-            validator: AssertUnwindSafe(validator) 
+
+        Ok(CompiledSchema {
+            validator: AssertUnwindSafe(validator),
         })
     }
 
@@ -57,7 +57,7 @@ impl CompiledSchema {
                         message: error.to_string(),
                     })
                     .collect();
-                
+
                 Err(JsonSchemaError::ValidationError(error_details))
             }
         }
@@ -80,21 +80,35 @@ fn compile_schema(env: Env, schema_json: String) -> Term {
             let error_map = rustler::types::map::map_new(env)
                 .map_put("type".encode(env), "json_parse_error".encode(env))
                 .unwrap()
-                .map_put("message".encode(env), format!("Invalid JSON: {}", e).encode(env))
+                .map_put(
+                    "message".encode(env),
+                    format!("Invalid JSON: {}", e).encode(env),
+                )
                 .unwrap()
-                .map_put("details".encode(env), format!("Failed to parse JSON at line {}, column {}", e.line(), e.column()).encode(env))
+                .map_put(
+                    "details".encode(env),
+                    format!(
+                        "Failed to parse JSON at line {}, column {}",
+                        e.line(),
+                        e.column()
+                    )
+                    .encode(env),
+                )
                 .unwrap();
             return (atoms::error(), error_map).encode(env);
         }
     };
-    
+
     let compiled = match CompiledSchema::new(schema_value) {
         Ok(compiled) => compiled,
         Err(JsonSchemaError::CompilationError(msg)) => {
             let error_map = rustler::types::map::map_new(env)
                 .map_put("type".encode(env), "compilation_error".encode(env))
                 .unwrap()
-                .map_put("message".encode(env), "Schema compilation failed".encode(env))
+                .map_put(
+                    "message".encode(env),
+                    "Schema compilation failed".encode(env),
+                )
                 .unwrap()
                 .map_put("details".encode(env), msg.encode(env))
                 .unwrap();
@@ -104,28 +118,28 @@ fn compile_schema(env: Env, schema_json: String) -> Term {
             let error_map = rustler::types::map::map_new(env)
                 .map_put("type".encode(env), "compilation_error".encode(env))
                 .unwrap()
-                .map_put("message".encode(env), "Unknown compilation error".encode(env))
+                .map_put(
+                    "message".encode(env),
+                    "Unknown compilation error".encode(env),
+                )
                 .unwrap()
                 .map_put("details".encode(env), format!("{}", e).encode(env))
                 .unwrap();
             return (atoms::error(), error_map).encode(env);
         }
     };
-    
+
     let resource = ResourceArc::new(compiled);
     (atoms::ok(), resource).encode(env)
 }
 
 #[rustler::nif]
-fn validate(
-    compiled_schema: ResourceArc<CompiledSchema>,
-    instance_json: String,
-) -> Atom {
+fn validate(compiled_schema: ResourceArc<CompiledSchema>, instance_json: String) -> Atom {
     let instance_value: Value = match serde_json::from_str(&instance_json) {
         Ok(value) => value,
         Err(_) => return atoms::error(),
     };
-    
+
     match compiled_schema.validate(&instance_value) {
         Ok(_) => atoms::ok(),
         Err(_) => atoms::error(),
@@ -142,7 +156,7 @@ fn validate_detailed(
         Ok(value) => value,
         Err(_) => return (atoms::error(), atoms::json_parse_error()).encode(env),
     };
-    
+
     match compiled_schema.validate(&instance_value) {
         Ok(_) => atoms::ok().encode(env),
         Err(JsonSchemaError::ValidationError(errors)) => {
@@ -150,22 +164,16 @@ fn validate_detailed(
                 .iter()
                 .map(|error| {
                     let error_map = rustler::types::map::map_new(env)
-                        .map_put(
-                            "instance_path".encode(env),
-                            error.instance_path.encode(env),
-                        )
+                        .map_put("instance_path".encode(env), error.instance_path.encode(env))
                         .unwrap()
-                        .map_put(
-                            "schema_path".encode(env),
-                            error.schema_path.encode(env),
-                        )
+                        .map_put("schema_path".encode(env), error.schema_path.encode(env))
                         .unwrap()
                         .map_put("message".encode(env), error.message.encode(env))
                         .unwrap();
                     error_map
                 })
                 .collect();
-            
+
             (atoms::error(), error_terms).encode(env)
         }
         Err(_) => (atoms::error(), atoms::validation_error()).encode(env),
@@ -173,14 +181,10 @@ fn validate_detailed(
 }
 
 #[rustler::nif]
-fn is_valid(
-    compiled_schema: ResourceArc<CompiledSchema>,
-    instance_json: String,
-) -> bool {
-    let instance_value: Value = serde_json::from_str(&instance_json)
-        .unwrap_or_else(|_| Value::Null);
-    
+fn valid(compiled_schema: ResourceArc<CompiledSchema>, instance_json: String) -> bool {
+    let instance_value: Value = serde_json::from_str(&instance_json).unwrap_or(Value::Null);
+
     compiled_schema.is_valid(&instance_value)
 }
 
-rustler::init!("Elixir.ExJsonschema.Native"); 
+rustler::init!("Elixir.ExJsonschema.Native");

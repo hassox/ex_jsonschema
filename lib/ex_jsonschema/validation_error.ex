@@ -15,7 +15,11 @@ defmodule ExJsonschema.ValidationError do
   Creates a ValidationError from a map returned by the NIF.
   """
   @spec from_map(map()) :: t()
-  def from_map(%{"instance_path" => instance_path, "schema_path" => schema_path, "message" => message}) do
+  def from_map(%{
+        "instance_path" => instance_path,
+        "schema_path" => schema_path,
+        "message" => message
+      }) do
     %__MODULE__{
       instance_path: instance_path,
       schema_path: schema_path,
@@ -53,12 +57,12 @@ defmodule ExJsonschema.ValidationError.Exception do
         "JSON Schema validation failed: #{error.message} at #{error.instance_path}"
 
       multiple_errors ->
-        error_messages = 
+        error_messages =
           multiple_errors
           |> Enum.map(&"#{&1.message} at #{&1.instance_path}")
           |> Enum.join("; ")
-        
+
         "JSON Schema validation failed with #{length(multiple_errors)} errors: #{error_messages}"
     end
   end
-end 
+end

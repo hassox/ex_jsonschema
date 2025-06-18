@@ -2,7 +2,7 @@ defmodule ExJsonschemaTest do
   use ExUnit.Case
   doctest ExJsonschema
 
-  alias ExJsonschema.{ValidationError, CompilationError}
+  alias ExJsonschema.{CompilationError, ValidationError}
 
   describe "compile/1" do
     test "compiles a valid schema" do
@@ -13,12 +13,16 @@ defmodule ExJsonschemaTest do
 
     test "returns error for invalid JSON" do
       invalid_json = ~s({"type": "string)
-      assert {:error, %CompilationError{type: :json_parse_error}} = ExJsonschema.compile(invalid_json)
+
+      assert {:error, %CompilationError{type: :json_parse_error}} =
+               ExJsonschema.compile(invalid_json)
     end
 
     test "returns error for invalid schema" do
       invalid_schema = ~s({"type": "invalid_type"})
-      assert {:error, %CompilationError{type: :compilation_error}} = ExJsonschema.compile(invalid_schema)
+
+      assert {:error, %CompilationError{type: :compilation_error}} =
+               ExJsonschema.compile(invalid_schema)
     end
   end
 
@@ -31,6 +35,7 @@ defmodule ExJsonschemaTest do
 
     test "raises on invalid schema" do
       invalid_schema = ~s({"type": "invalid_type"})
+
       assert_raise ArgumentError, ~r/Failed to compile schema.*CompilationError/, fn ->
         ExJsonschema.compile!(invalid_schema)
       end
@@ -131,7 +136,9 @@ defmodule ExJsonschemaTest do
 
     test "returns error for invalid schema" do
       invalid_schema = ~s({"type": "invalid_type"})
-      assert {:error, %CompilationError{type: :compilation_error}} = ExJsonschema.validate_once(invalid_schema, ~s("hello"))
+
+      assert {:error, %CompilationError{type: :compilation_error}} =
+               ExJsonschema.validate_once(invalid_schema, ~s("hello"))
     end
   end
 
@@ -146,10 +153,10 @@ defmodule ExJsonschemaTest do
       })
 
       {:ok, compiled} = ExJsonschema.compile(schema)
-      
+
       # Valid object
       assert :ok = ExJsonschema.validate(compiled, ~s({"foo": "bar"}))
-      
+
       # Invalid: additional property
       assert {:error, _} = ExJsonschema.validate(compiled, ~s({"foo": "bar", "baz": "qux"}))
     end
@@ -162,13 +169,13 @@ defmodule ExJsonschemaTest do
       })
 
       {:ok, compiled} = ExJsonschema.compile(schema)
-      
+
       # Valid array
       assert :ok = ExJsonschema.validate(compiled, ~s([1, 2, 3]))
-      
+
       # Invalid: empty array
       assert {:error, _} = ExJsonschema.validate(compiled, ~s([]))
-      
+
       # Invalid: wrong item type
       assert {:error, _} = ExJsonschema.validate(compiled, ~s([1, "two", 3]))
     end
@@ -191,14 +198,14 @@ defmodule ExJsonschemaTest do
       })
 
       {:ok, compiled} = ExJsonschema.compile(schema)
-      
+
       valid_json = ~s({
         "person": {
           "name": "John",
           "contacts": ["email@example.com", "123-456-7890"]
         }
       })
-      
+
       assert :ok = ExJsonschema.validate(compiled, valid_json)
     end
   end
@@ -219,7 +226,7 @@ defmodule ExJsonschemaTest do
 
       {:ok, compiled} = ExJsonschema.compile(schema)
       invalid_json = ~s({"user": {"age": -5}})
-      
+
       assert {:error, [error]} = ExJsonschema.validate(compiled, invalid_json)
       assert %ValidationError{} = error
       assert error.instance_path != ""

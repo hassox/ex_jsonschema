@@ -6,6 +6,10 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   build_nif:
     name: Build NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})

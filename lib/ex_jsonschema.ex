@@ -278,12 +278,40 @@ defmodule ExJsonschema do
     compile_with_native_options(schema_json, options)
   end
 
-  defp compile_with_native_options(schema_json, %Options{} = _options) do
-    # TODO: For M1.3, we're using the simple compile_schema that uses auto-detection
-    # M1.4 will implement the full options-aware compilation
-    case Native.compile_schema(schema_json) do
-      {:ok, compiled} -> {:ok, compiled}
-      {:error, error_map} -> {:error, CompilationError.from_map(error_map)}
+  defp compile_with_native_options(schema_json, %Options{} = options) do
+    # For M1.4: Options-aware compilation with validation
+    case validate_compilation_options(schema_json, options) do
+      :ok ->
+        # Use the validated options - for now, we use basic compilation
+        # Full options support will come in later milestones
+        case Native.compile_schema(schema_json) do
+          {:ok, compiled} -> {:ok, compiled}
+          {:error, error_map} -> {:error, CompilationError.from_map(error_map)}
+        end
+      
+      {:error, reason} ->
+        {:error, CompilationError.from_validation_error(reason)}
+    end
+  end
+
+  # Validates that compilation options are consistent with the schema
+  defp validate_compilation_options(schema_json, %Options{draft: draft} = _options) do
+    # When draft is not :auto, validate it matches schema if schema has $schema
+    case DraftDetector.detect_draft(schema_json) do
+      {:ok, detected_draft} ->
+        if draft != :auto and draft != detected_draft do
+          case DraftDetector.schema_has_draft?(schema_json) do
+            true ->
+              {:error, "Schema specifies #{detected_draft} but options specify #{draft}"}
+            false ->
+              :ok # No $schema in document, options draft is fine
+          end
+        else
+          :ok
+        end
+      
+      {:error, reason} ->
+        {:error, "Draft detection failed: #{reason}"}
     end
   end
 end

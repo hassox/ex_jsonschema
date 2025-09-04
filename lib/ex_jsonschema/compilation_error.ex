@@ -7,7 +7,7 @@ defmodule ExJsonschema.CompilationError do
   """
 
   @type t :: %__MODULE__{
-          type: :json_parse_error | :schema_validation_error | :compilation_error | :options_error | :detection_error,
+          type: :json_parse_error | :schema_validation_error | :compilation_error | :options_error | :detection_error | :validation_error,
           message: String.t(),
           details: String.t() | nil
         }
@@ -26,6 +26,7 @@ defmodule ExJsonschema.CompilationError do
         "compilation_error" -> :compilation_error
         "options_error" -> :options_error
         "detection_error" -> :detection_error
+        "validation_error" -> :validation_error
         _ -> :compilation_error
       end
 
@@ -60,6 +61,18 @@ defmodule ExJsonschema.CompilationError do
     %__MODULE__{
       type: :detection_error,
       message: "Draft detection failed",
+      details: reason
+    }
+  end
+
+  @doc """
+  Creates a CompilationError from a validation error during compilation.
+  """
+  @spec from_validation_error(String.t()) :: t()
+  def from_validation_error(reason) do
+    %__MODULE__{
+      type: :validation_error,
+      message: "Compilation validation failed",
       details: reason
     }
   end

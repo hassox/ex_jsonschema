@@ -11,6 +11,7 @@ defmodule ExJsonschema.MixProject do
       version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
+      config_path: "config/config.exs",
       deps: deps(),
       description: @description,
       package: package(),
@@ -89,7 +90,7 @@ defmodule ExJsonschema.MixProject do
       extras: [
         "README.md": [title: "Overview"],
         "CHANGELOG.md": [title: "Changelog"],
-        "LICENSE": [title: "License"]
+        LICENSE: [title: "License"]
       ],
       main: "readme",
       source_ref: "v#{@version}",
@@ -116,8 +117,8 @@ defmodule ExJsonschema.MixProject do
 
   defp rustler_mode do
     # Use precompiled NIFs in production, compile from source in dev
-    
-    if (System.get_env("EX_JSONSCHEMA_BUILD") in ["1", "true"]) or (Mix.env() in [:dev, :test]) do
+
+    if System.get_env("EX_JSONSCHEMA_BUILD") in ["1", "true"] or Mix.env() in [:dev, :test] do
       :release
     else
       {:precompiled, "#{@source_url}/releases/download/v#{@version}"}

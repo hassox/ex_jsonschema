@@ -1,6 +1,6 @@
 defmodule ExJsonschema.ProtocolImplementationsTest do
   use ExUnit.Case, async: true
-  
+
   alias ExJsonschema.{ValidationError, CompilationError}
 
   describe "ValidationError protocol implementations" do
@@ -16,6 +16,7 @@ defmodule ExJsonschema.ProtocolImplementationsTest do
         annotations: %{"annotation" => "test"},
         suggestions: ["Ensure age is at least 18"]
       }
+
       %{error: error}
     end
 
@@ -38,7 +39,7 @@ defmodule ExJsonschema.ProtocolImplementationsTest do
         schema_path: "/type",
         message: "Value is not a string"
       }
-      
+
       string_result = to_string(minimal_error)
       assert is_binary(string_result)
       assert String.contains?(string_result, "Value is not a string")
@@ -52,7 +53,7 @@ defmodule ExJsonschema.ProtocolImplementationsTest do
         message: "Invalid JSON syntax",
         details: "Missing closing bracket at line 5"
       }
-      
+
       string_result = to_string(error)
       assert String.contains?(string_result, "CompilationError(json_parse_error)")
       assert String.contains?(string_result, "Invalid JSON syntax")
@@ -65,7 +66,7 @@ defmodule ExJsonschema.ProtocolImplementationsTest do
         message: "Schema validation failed",
         details: nil
       }
-      
+
       string_result = to_string(error)
       assert String.contains?(string_result, "CompilationError(compilation_error)")
       assert String.contains?(string_result, "Schema validation failed")
@@ -78,7 +79,7 @@ defmodule ExJsonschema.ProtocolImplementationsTest do
         message: "Invalid options provided",
         details: "Unknown option 'invalid_key'"
       }
-      
+
       inspect_result = inspect(error)
       assert String.contains?(inspect_result, "#CompilationError<options_error:")
       assert String.contains?(inspect_result, "Invalid options provided>")
@@ -94,32 +95,48 @@ defmodule ExJsonschema.ProtocolImplementationsTest do
       }
 
       exception = ExJsonschema.ValidationError.Exception.exception(errors: [error])
-      
+
       assert exception.__struct__ == ExJsonschema.ValidationError.Exception
       assert exception.errors == [error]
     end
 
     test "exception creation from multiple errors" do
       errors = [
-        %ValidationError{instance_path: "/name", schema_path: "/properties/name/type", message: "Type error"},
-        %ValidationError{instance_path: "/age", schema_path: "/properties/age/minimum", message: "Minimum error"}
+        %ValidationError{
+          instance_path: "/name",
+          schema_path: "/properties/name/type",
+          message: "Type error"
+        },
+        %ValidationError{
+          instance_path: "/age",
+          schema_path: "/properties/age/minimum",
+          message: "Minimum error"
+        }
       ]
 
       exception = ExJsonschema.ValidationError.Exception.exception(errors: errors)
-      
+
       assert exception.errors == errors
       assert length(exception.errors) == 2
     end
 
     test "exception message formatting" do
       errors = [
-        %ValidationError{instance_path: "/name", schema_path: "/properties/name/type", message: "Type error"},
-        %ValidationError{instance_path: "/age", schema_path: "/properties/age/minimum", message: "Minimum error"}
+        %ValidationError{
+          instance_path: "/name",
+          schema_path: "/properties/name/type",
+          message: "Type error"
+        },
+        %ValidationError{
+          instance_path: "/age",
+          schema_path: "/properties/age/minimum",
+          message: "Minimum error"
+        }
       ]
 
       exception = ExJsonschema.ValidationError.Exception.exception(errors: errors)
       message = Exception.message(exception)
-      
+
       assert is_binary(message)
       assert String.contains?(message, "JSON Schema validation failed")
       # Should contain information about the number of errors  

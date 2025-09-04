@@ -1,6 +1,6 @@
 defmodule ExJsonschema.EdgeCasesTest do
   use ExUnit.Case, async: true
-  
+
   alias ExJsonschema.{CompilationError, ValidationError}
 
   describe "compile!/1" do
@@ -12,15 +12,16 @@ defmodule ExJsonschema.EdgeCasesTest do
 
     test "raises ArgumentError on compilation failure" do
       invalid_schema = ~s({"type": "invalid_type"})
-      
+
       assert_raise ArgumentError, ~r/Failed to compile schema/, fn ->
         ExJsonschema.compile!(invalid_schema)
       end
     end
 
     test "raises ArgumentError on JSON parse error" do
-      invalid_json = ~s({"type": "string)  # Missing closing quote
-      
+      # Missing closing quote
+      invalid_json = ~s({"type": "string)
+
       assert_raise ArgumentError, ~r/Failed to compile schema/, fn ->
         ExJsonschema.compile!(invalid_json)
       end
@@ -45,7 +46,7 @@ defmodule ExJsonschema.EdgeCasesTest do
 
     test "raises ValidationError.Exception on validation failure", %{validator: validator} do
       invalid_json = ~s({"name": 123})
-      
+
       assert_raise ExJsonschema.ValidationError.Exception, fn ->
         ExJsonschema.validate!(validator, invalid_json)
       end
@@ -56,15 +57,16 @@ defmodule ExJsonschema.EdgeCasesTest do
     test "handles compilation errors" do
       invalid_schema = ~s({"type": "invalid_type"})
       instance = ~s("test")
-      
+
       result = ExJsonschema.validate_once(invalid_schema, instance)
       assert {:error, %CompilationError{}} = result
     end
 
     test "handles JSON parse errors in schema" do
-      invalid_json_schema = ~s({"type": "string)  # Missing quote
+      # Missing quote
+      invalid_json_schema = ~s({"type": "string)
       instance = ~s("test")
-      
+
       result = ExJsonschema.validate_once(invalid_json_schema, instance)
       assert {:error, %CompilationError{}} = result
     end
@@ -72,7 +74,7 @@ defmodule ExJsonschema.EdgeCasesTest do
     test "successful validation" do
       schema = ~s({"type": "string"})
       instance = ~s("test")
-      
+
       result = ExJsonschema.validate_once(schema, instance)
       assert :ok = result
     end
@@ -80,7 +82,7 @@ defmodule ExJsonschema.EdgeCasesTest do
     test "failed validation" do
       schema = ~s({"type": "string"})
       instance = ~s(123)
-      
+
       result = ExJsonschema.validate_once(schema, instance)
       assert {:error, [%ValidationError{} | _]} = result
     end
@@ -93,19 +95,20 @@ defmodule ExJsonschema.EdgeCasesTest do
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string"
       })
-      
+
       # Try to compile with draft4 options - should fail
       result = ExJsonschema.compile(schema, draft: :draft4)
       assert {:error, %CompilationError{}} = result
       error = elem(result, 1)
       # Error message should indicate validation failed due to draft mismatch
-      assert String.contains?(error.message, "validation") or String.contains?(error.message, "draft")
+      assert String.contains?(error.message, "validation") or
+               String.contains?(error.message, "draft")
     end
 
     test "no draft mismatch when schema has no $schema" do
       # Schema without explicit $schema
       schema = ~s({"type": "string"})
-      
+
       # Should succeed with any draft option
       result = ExJsonschema.compile(schema, draft: :draft4)
       assert {:ok, compiled} = result
@@ -117,7 +120,7 @@ defmodule ExJsonschema.EdgeCasesTest do
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "string"
       })
-      
+
       result = ExJsonschema.compile(schema, draft: :auto)
       assert {:ok, compiled} = result
       assert is_reference(compiled)
@@ -170,15 +173,16 @@ defmodule ExJsonschema.EdgeCasesTest do
 
   describe "draft detection edge cases" do
     test "detect_draft with invalid JSON returns error" do
-      invalid_json = ~s({"type": "string)  # Missing quote
-      
+      # Missing quote
+      invalid_json = ~s({"type": "string)
+
       result = ExJsonschema.detect_draft(invalid_json)
       assert {:error, _reason} = result
     end
 
     test "detect_draft with map input" do
       schema_map = %{"type" => "string"}
-      
+
       result = ExJsonschema.detect_draft(schema_map)
       assert {:ok, :draft202012} = result
     end
@@ -188,7 +192,7 @@ defmodule ExJsonschema.EdgeCasesTest do
         "$schema" => "http://json-schema.org/draft-07/schema#",
         "type" => "string"
       }
-      
+
       result = ExJsonschema.detect_draft(schema_map)
       assert {:ok, :draft7} = result
     end
@@ -198,15 +202,19 @@ defmodule ExJsonschema.EdgeCasesTest do
     test "native validation errors are handled gracefully" do
       schema = ~s({"type": "string"})
       {:ok, validator} = ExJsonschema.compile(schema)
-      
+
       # Test with various invalid inputs that might cause different error types
       test_cases = [
-        ~s(123),           # Type error
-        ~s(null),          # Null value
-        ~s([]),            # Array instead of string
-        ~s({})             # Object instead of string
+        # Type error
+        ~s(123),
+        # Null value
+        ~s(null),
+        # Array instead of string
+        ~s([]),
+        # Object instead of string
+        ~s({})
       ]
-      
+
       for invalid_input <- test_cases do
         result = ExJsonschema.validate(validator, invalid_input)
         assert {:error, [%ValidationError{} | _]} = result
@@ -218,7 +226,7 @@ defmodule ExJsonschema.EdgeCasesTest do
     test "validate Options struct is properly handled" do
       schema = ~s({"type": "string"})
       {:ok, validator} = ExJsonschema.compile(schema)
-      
+
       opts = ExJsonschema.Options.new(output_format: :basic)
       result = ExJsonschema.validate(validator, ~s("hello"), opts)
       assert :ok = result
@@ -227,7 +235,7 @@ defmodule ExJsonschema.EdgeCasesTest do
     test "valid?/3 with Options struct" do
       schema = ~s({"type": "string"})
       {:ok, validator} = ExJsonschema.compile(schema)
-      
+
       opts = ExJsonschema.Options.new()
       result = ExJsonschema.valid?(validator, ~s("hello"), opts)
       assert true = result

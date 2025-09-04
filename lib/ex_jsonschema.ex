@@ -222,6 +222,188 @@ defmodule ExJsonschema do
   - **Developer clarity** - Makes draft intentions explicit in your code
   - **Compatibility** - All shortcuts support the same options as `compile/2`
 
+  ## Error Analysis and Intelligence
+
+  ExJsonschema provides advanced error analysis capabilities that go beyond simple 
+  validation error reporting. These features help developers understand, prioritize,
+  and systematically fix validation issues.
+
+  ### Error Analysis (`:analysis`)
+  Get comprehensive insights into validation errors:
+
+      {:error, errors} = ExJsonschema.validate(validator, invalid_data, output: :verbose)
+      
+      analysis = ExJsonschema.analyze_errors(errors)
+      
+      # Total error count
+      analysis.total_errors
+      #=> 5
+      
+      # Error categorization
+      analysis.categories
+      #=> %{
+      #     type_mismatch: 2,         # Wrong data types
+      #     constraint_violation: 2,  # Min/max, length violations
+      #     structural: 1,            # Missing properties, array issues
+      #     format: 0,                # Format validation failures
+      #     custom: 0                 # Custom validation rules
+      #   }
+      
+      # Severity classification
+      analysis.severities
+      #=> %{critical: 2, high: 2, medium: 1, low: 0}
+      
+      # Detected patterns
+      analysis.patterns
+      #=> [:missing_properties, :type_conflicts]
+      
+      # Most problematic data paths
+      analysis.most_common_paths
+      #=> ["/user/email", "/user/profile", "/settings"]
+      
+      # Actionable fix recommendations
+      analysis.recommendations
+      #=> [
+      #     "Review required fields - ensure all mandatory properties are included",
+      #     "Check data types - multiple type mismatches detected",
+      #     "Validate constraints - multiple range/length violations found"
+      #   ]
+
+  ### Error Summary (`:summary`)
+  Get human-readable analysis summary:
+
+      summary = ExJsonschema.analyze_errors(errors, :summary)
+      puts(summary)
+      
+      # Output:
+      # 5 validation errors detected
+      #
+      # Categories: 2 type mismatches, 2 constraint violations, 1 structural issues
+      #
+      # Severity: 2 critical, 2 high, 1 medium
+      #
+      # Detected patterns: missing required properties, conflicting data types
+      #
+      # Top recommendations:
+      # 1. Review required fields - ensure all mandatory properties are included
+      # 2. Check data types - multiple type mismatches detected
+      # 3. Validate constraints - multiple range/length violations found
+
+  ### Pattern Detection
+  ExJsonschema automatically detects common error patterns:
+
+  - **Missing Properties** - Required fields not provided
+  - **Type Conflicts** - Multiple type mismatches across the document
+  - **Range Violations** - Min/max, length constraint failures
+  - **Format Issues** - Pattern, enum, and format validation problems
+
+  These patterns help identify systematic data issues and guide comprehensive fixes.
+
+  ### Severity Classification
+  Errors are classified by severity to help prioritize fixes:
+
+  - **Critical** - Type mismatches, missing required fields (blocks core functionality)
+  - **High** - Constraint violations, exact value mismatches (affects business logic)
+  - **Medium** - Format issues, pattern failures (impacts user experience)
+  - **Low** - Minor validation issues (cosmetic or edge cases)
+
+  ### Integration with Error Formatting
+  Analysis insights integrate seamlessly with all error formatting options:
+
+      # Format errors with analysis context
+      formatted = ExJsonschema.format_errors(errors, :human, max_errors: 3)
+      
+      # Get analysis for programmatic processing
+      analysis = ExJsonschema.analyze_errors(errors)
+      
+      # Create comprehensive error report
+      error_report = \"\"\"
+      Validation Failed: \#{analysis.total_errors} errors
+      
+      \#{formatted}
+      
+      Recommendations:
+      \#{analysis.recommendations |> Enum.with_index(1) |> Enum.map(fn {rec, i} -> "\#{i}. \#{rec}" end) |> Enum.join("\\\\n")}
+      \"\"\"
+
+  ## Real-World Integration Patterns
+
+  ExJsonschema's error handling capabilities integrate smoothly with common Elixir 
+  ecosystem tools and frameworks:
+
+  ### Phoenix Controllers
+      def create(conn, params) do
+        case validate_and_process(params) do
+          {:ok, data} -> 
+            json(conn, %{status: "success", data: data})
+          
+          {:error, validation_errors} ->
+            # Convert to user-friendly field errors
+            field_errors = validation_errors
+            |> Enum.group_by(&extract_field/1)
+            |> Map.new(fn {field, errors} -> 
+                 {field, Enum.map(errors, &friendly_message/1)} 
+               end)
+            
+            conn
+            |> put_status(422)
+            |> json(%{status: "error", errors: field_errors})
+        end
+      end
+
+  ### Logging and Monitoring
+      {:error, errors} = ExJsonschema.validate(validator, request)
+      
+      # Log structured error data
+      analysis = ExJsonschema.analyze_errors(errors)
+      
+      Logger.error("Validation failed", %{
+        error_count: analysis.total_errors,
+        categories: analysis.categories,
+        severity_breakdown: analysis.severities,
+        patterns: analysis.patterns
+      })
+      
+      # Send metrics to monitoring system
+      :telemetry.execute([:app, :validation, :failed], %{
+        total_errors: analysis.total_errors,
+        critical_errors: Map.get(analysis.severities, :critical, 0)
+      })
+
+  ### Configuration and Startup Validation
+      def validate_config!(config) do
+        case ExJsonschema.validate(config_validator, config, output: :verbose) do
+          :ok -> :ok
+          
+          {:error, errors} ->
+            formatted = ExJsonschema.format_errors(errors, :human, color: false)
+            
+            raise \"\"\"
+            Application configuration is invalid:
+            
+            \#{formatted}
+            
+            Please fix these issues before starting the application.
+            \"\"\"
+        end
+      end
+
+  ### Test Data Validation
+      # Validate test fixtures to ensure they match expected schemas
+      def validate_fixture!(fixture_data, schema) do
+        case ExJsonschema.validate(schema, fixture_data) do
+          :ok -> fixture_data
+          
+          {:error, errors} ->
+            summary = ExJsonschema.analyze_errors(errors, :summary)
+            flunk("Test fixture validation failed:\\\\n\#{summary}")
+        end
+      end
+
+  For comprehensive examples and integration patterns, see the 
+  `test/examples/` directory which contains 28+ working examples 
+  covering all error handling scenarios.
+
   ## Features
 
   - High-performance validation using Rust (1.4M-1.9M validations/second)
@@ -237,7 +419,15 @@ defmodule ExJsonschema do
 
   """
 
-  alias ExJsonschema.{CompilationError, DraftDetector, ErrorAnalyzer, ErrorFormatter, Native, Options, ValidationError}
+  alias ExJsonschema.{
+    CompilationError,
+    DraftDetector,
+    ErrorAnalyzer,
+    ErrorFormatter,
+    Native,
+    Options,
+    ValidationError
+  }
 
   @typedoc """
   A compiled JSON Schema validator optimized for repeated use.
@@ -340,7 +530,8 @@ defmodule ExJsonschema do
       true
 
   """
-  @spec compile(json_string(), Options.t() | keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  @spec compile(json_string(), Options.t() | keyword()) ::
+          {:ok, compiled_schema()} | {:error, CompilationError.t()}
   def compile(schema_json, %Options{} = options) when is_binary(schema_json) do
     compile_with_options(schema_json, options)
   end
@@ -399,7 +590,7 @@ defmodule ExJsonschema do
   Validates JSON against a compiled schema with output format and validation options control.
 
   ## Output Formats
-  
+
   - `:basic` - Returns `:ok` or `{:error, :validation_failed}` (fastest)
   - `:detailed` - Returns `:ok` or `{:error, [ValidationError.t()]}` (default)
   - `:verbose` - Returns detailed errors with additional context, values, and suggestions
@@ -433,14 +624,15 @@ defmodule ExJsonschema do
       {:error, [%ExJsonschema.ValidationError{}]}
 
   """
-  @spec validate(compiled_schema(), json_string(), keyword() | Options.t()) :: validation_result() | basic_validation_result()
-  
+  @spec validate(compiled_schema(), json_string(), keyword() | Options.t()) ::
+          validation_result() | basic_validation_result()
+
   # Accept Options struct
   def validate(compiled_schema, instance_json, %Options{} = options)
       when is_reference(compiled_schema) and is_binary(instance_json) do
     validate_with_options(compiled_schema, instance_json, options)
   end
-  
+
   # Accept keyword list
   def validate(compiled_schema, instance_json, opts)
       when is_reference(compiled_schema) and is_binary(instance_json) and is_list(opts) do
@@ -512,13 +704,13 @@ defmodule ExJsonschema do
 
   """
   @spec valid?(compiled_schema(), json_string(), keyword() | Options.t()) :: boolean()
-  
+
   # Accept Options struct
   def valid?(compiled_schema, instance_json, %Options{} = options)
       when is_reference(compiled_schema) and is_binary(instance_json) do
     valid_with_options(compiled_schema, instance_json, options)
   end
-  
+
   # Accept keyword list
   def valid?(compiled_schema, instance_json, opts)
       when is_reference(compiled_schema) and is_binary(instance_json) and is_list(opts) do
@@ -568,7 +760,8 @@ defmodule ExJsonschema do
       true
 
   """
-  @spec compile_draft4(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  @spec compile_draft4(json_string(), keyword()) ::
+          {:ok, compiled_schema()} | {:error, CompilationError.t()}
   def compile_draft4(schema_json, options \\ []) when is_binary(schema_json) do
     options_with_draft = Keyword.put(options, :draft, :draft4)
     compile(schema_json, options_with_draft)
@@ -585,7 +778,8 @@ defmodule ExJsonschema do
       true
 
   """
-  @spec compile_draft6(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  @spec compile_draft6(json_string(), keyword()) ::
+          {:ok, compiled_schema()} | {:error, CompilationError.t()}
   def compile_draft6(schema_json, options \\ []) when is_binary(schema_json) do
     options_with_draft = Keyword.put(options, :draft, :draft6)
     compile(schema_json, options_with_draft)
@@ -604,7 +798,8 @@ defmodule ExJsonschema do
       true
 
   """
-  @spec compile_draft7(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  @spec compile_draft7(json_string(), keyword()) ::
+          {:ok, compiled_schema()} | {:error, CompilationError.t()}
   def compile_draft7(schema_json, options \\ []) when is_binary(schema_json) do
     options_with_draft = Keyword.put(options, :draft, :draft7)
     compile(schema_json, options_with_draft)
@@ -621,7 +816,8 @@ defmodule ExJsonschema do
       true
 
   """
-  @spec compile_draft201909(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  @spec compile_draft201909(json_string(), keyword()) ::
+          {:ok, compiled_schema()} | {:error, CompilationError.t()}
   def compile_draft201909(schema_json, options \\ []) when is_binary(schema_json) do
     options_with_draft = Keyword.put(options, :draft, :draft201909)
     compile(schema_json, options_with_draft)
@@ -640,7 +836,8 @@ defmodule ExJsonschema do
       true
 
   """
-  @spec compile_draft202012(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  @spec compile_draft202012(json_string(), keyword()) ::
+          {:ok, compiled_schema()} | {:error, CompilationError.t()}
   def compile_draft202012(schema_json, options \\ []) when is_binary(schema_json) do
     options_with_draft = Keyword.put(options, :draft, :draft202012)
     compile(schema_json, options_with_draft)
@@ -714,7 +911,8 @@ defmodule ExJsonschema do
       true
 
   """
-  @spec compile_auto_draft(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  @spec compile_auto_draft(json_string(), keyword()) ::
+          {:ok, compiled_schema()} | {:error, CompilationError.t()}
   def compile_auto_draft(schema_json, options \\ []) when is_binary(schema_json) do
     options_with_auto = Keyword.put(options, :draft, :auto)
     compile(schema_json, options_with_auto)
@@ -722,19 +920,19 @@ defmodule ExJsonschema do
 
   @doc """
   Formats validation errors for display using the specified format.
-  
+
   This is a convenience function that delegates to `ExJsonschema.ErrorFormatter.format/3`.
-  
+
   ## Supported Formats
-  
+
   - `:human` - Human-readable text format with colors and suggestions
   - `:json` - Structured JSON format for programmatic use
   - `:table` - Tabular format for easy scanning of multiple errors
   - `:markdown` - Markdown format for documentation and web display
   - `:llm` - LLM-optimized format for AI assistant consumption
-  
+
   ## Examples
-  
+
       # Format errors for human consumption
       ExJsonschema.format_errors(errors, :human)
       
@@ -745,19 +943,23 @@ defmodule ExJsonschema do
       ExJsonschema.format_errors(errors, :table, compact: true)
       
   """
-  @spec format_errors([ValidationError.t()], ErrorFormatter.format(), ErrorFormatter.format_options()) :: String.t()
+  @spec format_errors(
+          [ValidationError.t()],
+          ErrorFormatter.format(),
+          ErrorFormatter.format_options()
+        ) :: String.t()
   def format_errors(errors, format, options \\ []) do
     ErrorFormatter.format(errors, format, options)
   end
 
   @doc """
   Analyzes validation errors to provide insights, categorization, and recommendations.
-  
+
   Returns a comprehensive analysis including error categories, severity levels,
   detected patterns, and actionable recommendations for fixing the issues.
-  
+
   ## Examples
-  
+
       {:error, errors} = ExJsonschema.validate(validator, invalid_json)
       analysis = ExJsonschema.analyze_errors(errors)
       
@@ -773,16 +975,16 @@ defmodule ExJsonschema do
       # Get human-readable summary
       ExJsonschema.analyze_errors(errors, :summary)
       #=> "3 validation errors detected\\n\\nCategories: 1 type mismatches, 2 constraint violations..."
-  
+
   """
   @spec analyze_errors([ValidationError.t()]) :: ErrorAnalyzer.error_analysis()
   @spec analyze_errors([ValidationError.t()], :summary) :: String.t()
   def analyze_errors(errors, format \\ :analysis)
-  
+
   def analyze_errors(errors, :analysis) when is_list(errors) do
     ErrorAnalyzer.analyze(errors)
   end
-  
+
   def analyze_errors(errors, :summary) when is_list(errors) do
     ErrorAnalyzer.summarize(errors)
   end
@@ -791,54 +993,82 @@ defmodule ExJsonschema do
 
   defp validate_and_normalize_options(opts) do
     # Validate each option
-    valid_options = [:output, :validate_formats, :ignore_unknown_formats, 
-                     :stop_on_first_error, :collect_annotations]
-    
+    valid_options = [
+      :output,
+      :validate_formats,
+      :ignore_unknown_formats,
+      :stop_on_first_error,
+      :collect_annotations
+    ]
+
     # Check for invalid options
     invalid_opts = Keyword.keys(opts) -- valid_options
+
     unless Enum.empty?(invalid_opts) do
-      raise ArgumentError, "Invalid validation option(s): #{inspect(invalid_opts)}. " <>
-                          "Valid options are: #{inspect(valid_options)}"
+      raise ArgumentError,
+            "Invalid validation option(s): #{inspect(invalid_opts)}. " <>
+              "Valid options are: #{inspect(valid_options)}"
     end
-    
+
     # Validate boolean options
-    boolean_opts = [:validate_formats, :ignore_unknown_formats, :stop_on_first_error, :collect_annotations]
+    boolean_opts = [
+      :validate_formats,
+      :ignore_unknown_formats,
+      :stop_on_first_error,
+      :collect_annotations
+    ]
+
     for opt <- boolean_opts do
       if Keyword.has_key?(opts, opt) do
         value = Keyword.get(opts, opt)
+
         unless is_boolean(value) do
           raise ArgumentError, "Option #{inspect(opt)} must be a boolean, got: #{inspect(value)}"
         end
       end
     end
-    
+
     # Validate output format
     if Keyword.has_key?(opts, :output) do
       output = Keyword.get(opts, :output)
+
       unless output in [:basic, :detailed, :verbose] do
-        raise ArgumentError, "Invalid output format: #{inspect(output)}. Must be one of: :basic, :detailed, :verbose"
+        raise ArgumentError,
+              "Invalid output format: #{inspect(output)}. Must be one of: :basic, :detailed, :verbose"
       end
     end
-    
+
     # Convert to Options struct with defaults
-    Options.new([
+    Options.new(
       output_format: Keyword.get(opts, :output, :detailed),
       validate_formats: Keyword.get(opts, :validate_formats, false),
       ignore_unknown_formats: Keyword.get(opts, :ignore_unknown_formats, true),
       stop_on_first_error: Keyword.get(opts, :stop_on_first_error, false),
       collect_annotations: Keyword.get(opts, :collect_annotations, true)
-    ])
+    )
   end
-  
-  defp validate_with_options(compiled_schema, instance_json, %Options{output_format: output_format} = options) do
+
+  defp validate_with_options(
+         compiled_schema,
+         instance_json,
+         %Options{output_format: output_format} = options
+       ) do
     case output_format do
-      :basic -> validate_basic_with_options(compiled_schema, instance_json, options)
-      :detailed -> validate_detailed_with_options(compiled_schema, instance_json, options)
-      :verbose -> validate_verbose_with_options(compiled_schema, instance_json, options)
-      _ -> raise ArgumentError, "Invalid output format: #{inspect(output_format)}. Must be one of: :basic, :detailed, :verbose"
+      :basic ->
+        validate_basic_with_options(compiled_schema, instance_json, options)
+
+      :detailed ->
+        validate_detailed_with_options(compiled_schema, instance_json, options)
+
+      :verbose ->
+        validate_verbose_with_options(compiled_schema, instance_json, options)
+
+      _ ->
+        raise ArgumentError,
+              "Invalid output format: #{inspect(output_format)}. Must be one of: :basic, :detailed, :verbose"
     end
   end
-  
+
   defp valid_with_options(compiled_schema, instance_json, %Options{} = options) do
     # For now, use basic validation with options
     # In the future, this could be optimized to use a dedicated native function
@@ -885,23 +1115,23 @@ defmodule ExJsonschema do
         {:error, [:validation_error]}
     end
   end
-  
+
   # Validation functions with options support
   # NOTE: For M2.4, these are implemented as placeholders that use the existing
   # native functions. Full options support in the Rust NIF will come in later milestones.
-  
+
   defp validate_basic_with_options(compiled_schema, instance_json, %Options{} = _options) do
     # For now, use basic validation without options
     # TODO: Pass options to native function when Rust NIF is updated
     validate_basic(compiled_schema, instance_json)
   end
-  
+
   defp validate_detailed_with_options(compiled_schema, instance_json, %Options{} = _options) do
     # For now, use detailed validation without options
     # TODO: Pass options to native function when Rust NIF is updated
     validate_detailed(compiled_schema, instance_json)
   end
-  
+
   defp validate_verbose_with_options(compiled_schema, instance_json, %Options{} = options) do
     # For now, use verbose validation without options
     # TODO: Pass options to native function when Rust NIF is updated
@@ -931,22 +1161,25 @@ defmodule ExJsonschema do
     case validate_compilation_options(schema_json, options) do
       :ok ->
         # Use draft-specific compilation when draft is specified (not :auto)
-        result = case draft do
-          :auto ->
-            # Already resolved by compile_with_options, shouldn't reach here
-            Native.compile_schema(schema_json)
-          draft when draft in [:draft4, :draft6, :draft7, :draft201909, :draft202012] ->
-            Native.compile_schema_with_draft(schema_json, draft)
-          _ ->
-            # Fallback to generic compilation
-            Native.compile_schema(schema_json)
-        end
-        
+        result =
+          case draft do
+            :auto ->
+              # Already resolved by compile_with_options, shouldn't reach here
+              Native.compile_schema(schema_json)
+
+            draft when draft in [:draft4, :draft6, :draft7, :draft201909, :draft202012] ->
+              Native.compile_schema_with_draft(schema_json, draft)
+
+            _ ->
+              # Fallback to generic compilation
+              Native.compile_schema(schema_json)
+          end
+
         case result do
           {:ok, compiled} -> {:ok, compiled}
           {:error, error_map} -> {:error, CompilationError.from_map(error_map)}
         end
-      
+
       {:error, reason} ->
         {:error, CompilationError.from_validation_error(reason)}
     end
@@ -961,13 +1194,15 @@ defmodule ExJsonschema do
           case DraftDetector.schema_has_draft?(schema_json) do
             true ->
               {:error, "Schema specifies #{detected_draft} but options specify #{draft}"}
+
             false ->
-              :ok # No $schema in document, options draft is fine
+              # No $schema in document, options draft is fine
+              :ok
           end
         else
           :ok
         end
-      
+
       {:error, reason} ->
         {:error, "Draft detection failed: #{reason}"}
     end

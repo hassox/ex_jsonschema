@@ -13,13 +13,15 @@ defmodule ExJsonschema.CoreTest do
 
     test "rejects invalid JSON with clear error" do
       invalid_json = ~s({"type": "string)
-      assert {:error, %CompilationError{type: :detection_error}} = 
+
+      assert {:error, %CompilationError{type: :detection_error}} =
                ExJsonschema.compile(invalid_json)
     end
 
     test "rejects invalid schema with clear error" do
       invalid_schema = ~s({"type": "invalid_type"})
-      assert {:error, %CompilationError{type: :compilation_error}} = 
+
+      assert {:error, %CompilationError{type: :compilation_error}} =
                ExJsonschema.compile(invalid_schema)
     end
   end
@@ -41,7 +43,7 @@ defmodule ExJsonschema.CoreTest do
 
     test "raises on invalid schema" do
       invalid_schema = ~s({"type": "invalid_type"})
-      
+
       assert_raise ArgumentError, ~r/Failed to compile schema.*CompilationError/, fn ->
         ExJsonschema.compile!(invalid_schema)
       end
@@ -63,10 +65,10 @@ defmodule ExJsonschema.CoreTest do
     test "rejects invalid instance", %{validator: validator} do
       invalid_json = ~s(123)
       assert {:error, errors} = ExJsonschema.validate(validator, invalid_json)
-      
+
       assert is_list(errors)
       assert length(errors) > 0
-      
+
       error = hd(errors)
       assert %ValidationError{} = error
     end
@@ -75,7 +77,7 @@ defmodule ExJsonschema.CoreTest do
   describe "validate!/2" do
     setup do
       schema = ~s({"type": "string"})
-      {:ok, validator} = ExJsonschema.compile(schema) 
+      {:ok, validator} = ExJsonschema.compile(schema)
       %{validator: validator}
     end
 
@@ -101,7 +103,7 @@ defmodule ExJsonschema.CoreTest do
       assert ExJsonschema.valid?(validator, ~s("hello")) == true
     end
 
-    test "returns false for invalid instance", %{validator: validator} do  
+    test "returns false for invalid instance", %{validator: validator} do
       assert ExJsonschema.valid?(validator, ~s(123)) == false
     end
   end
@@ -120,7 +122,7 @@ defmodule ExJsonschema.CoreTest do
 
     test "returns error for invalid schema" do
       invalid_schema = ~s({"type": "invalid_type"})
-      
+
       assert {:error, %CompilationError{type: :compilation_error}} =
                ExJsonschema.validate_once(invalid_schema, ~s("hello"))
     end

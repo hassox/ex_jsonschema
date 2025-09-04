@@ -85,8 +85,8 @@ defmodule ExJsonschema.DraftDetectorTest do
         "type" => "array"
       }
 
-      assert {:error, "Invalid $schema value: must be a string, got 123"} = 
-        DraftDetector.detect_draft(schema)
+      assert {:error, "Invalid $schema value: must be a string, got 123"} =
+               DraftDetector.detect_draft(schema)
     end
 
     test "detects draft from JSON string input" do
@@ -147,7 +147,7 @@ defmodule ExJsonschema.DraftDetectorTest do
 
       assert is_list(supported)
       assert :draft4 in supported
-      assert :draft6 in supported  
+      assert :draft6 in supported
       assert :draft7 in supported
       assert :draft201909 in supported
       assert :draft202012 in supported
@@ -207,8 +207,12 @@ defmodule ExJsonschema.DraftDetectorTest do
       assert DraftDetector.draft_url(:draft4) == "http://json-schema.org/draft-04/schema#"
       assert DraftDetector.draft_url(:draft6) == "http://json-schema.org/draft-06/schema#"
       assert DraftDetector.draft_url(:draft7) == "http://json-schema.org/draft-07/schema#"
-      assert DraftDetector.draft_url(:draft201909) == "https://json-schema.org/draft/2019-09/schema"
-      assert DraftDetector.draft_url(:draft202012) == "https://json-schema.org/draft/2020-12/schema"
+
+      assert DraftDetector.draft_url(:draft201909) ==
+               "https://json-schema.org/draft/2019-09/schema"
+
+      assert DraftDetector.draft_url(:draft202012) ==
+               "https://json-schema.org/draft/2020-12/schema"
     end
 
     test "returns error for unsupported draft" do

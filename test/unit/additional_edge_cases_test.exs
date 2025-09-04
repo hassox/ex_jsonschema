@@ -4,10 +4,10 @@ defmodule ExJsonschema.AdditionalEdgeCasesTest do
   describe "additional edge cases for coverage" do
     test "supported_drafts/0 returns expected drafts" do
       drafts = ExJsonschema.supported_drafts()
-      
+
       assert is_list(drafts)
       assert :draft4 in drafts
-      assert :draft6 in drafts 
+      assert :draft6 in drafts
       assert :draft7 in drafts
       assert :draft201909 in drafts
       assert :draft202012 in drafts
@@ -30,7 +30,7 @@ defmodule ExJsonschema.AdditionalEdgeCasesTest do
     test "validate/3 with invalid options raises proper errors" do
       schema = ~s({"type": "string"})
       {:ok, validator} = ExJsonschema.compile(schema)
-      
+
       # Test invalid validation option
       assert_raise ArgumentError, ~r/Invalid validation option/, fn ->
         ExJsonschema.validate(validator, ~s("test"), invalid_option: true)
@@ -48,7 +48,7 @@ defmodule ExJsonschema.AdditionalEdgeCasesTest do
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string"
       })
-      
+
       result = ExJsonschema.compile(schema_with_draft, draft: :auto)
       assert {:ok, compiled} = result
       assert is_reference(compiled)
@@ -61,20 +61,23 @@ defmodule ExJsonschema.AdditionalEdgeCasesTest do
     end
 
     test "Options validation edge cases" do
-      opts = ExJsonschema.Options.new(
-        draft: :draft4,
-        regex_engine: :regex,
-        output_format: :flag,
-        max_reference_depth: 0,  # Edge case: zero depth
-        trusted_domains: []      # Edge case: empty list
-      )
-      
+      opts =
+        ExJsonschema.Options.new(
+          draft: :draft4,
+          regex_engine: :regex,
+          output_format: :flag,
+          # Edge case: zero depth
+          max_reference_depth: 0,
+          # Edge case: empty list
+          trusted_domains: []
+        )
+
       assert {:ok, ^opts} = ExJsonschema.Options.validate(opts)
     end
 
     test "compilation with different option combinations" do
       schema = ~s({"type": "string"})
-      
+
       # Test with various keyword options
       option_sets = [
         [draft: :draft4],
@@ -83,7 +86,7 @@ defmodule ExJsonschema.AdditionalEdgeCasesTest do
         [draft: :draft201909],
         [draft: :draft202012]
       ]
-      
+
       for opts <- option_sets do
         result = ExJsonschema.compile(schema, opts)
         assert {:ok, compiled} = result

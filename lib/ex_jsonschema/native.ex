@@ -15,14 +15,14 @@ defmodule ExJsonschema.Native do
   @type regex_engine :: :fancy_regex | :regex
 
   @type compilation_options :: %{
-    draft: draft(),
-    validate_formats: boolean(),
-    ignore_unknown_formats: boolean(),
-    collect_annotations: boolean(),
-    regex_engine: regex_engine(),
-    resolve_external_refs: boolean(),
-    stop_on_first_error: boolean()
-  }
+          draft: draft(),
+          validate_formats: boolean(),
+          ignore_unknown_formats: boolean(),
+          collect_annotations: boolean(),
+          regex_engine: regex_engine(),
+          resolve_external_refs: boolean(),
+          stop_on_first_error: boolean()
+        }
 
   @type compilation_result :: {:ok, compiled_schema()} | {:error, map()}
   @type validation_result :: :ok | :error | {:error, [map()]}

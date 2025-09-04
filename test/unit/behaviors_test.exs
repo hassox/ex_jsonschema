@@ -60,12 +60,14 @@ defmodule ExJsonschema.BehaviorsTest do
   # Helper functions for testing behavior definitions
   defp assert_callback(behavior, function, arity) do
     callbacks = behavior.behaviour_info(:callbacks)
-    assert {function, arity} in callbacks, 
+
+    assert {function, arity} in callbacks,
            "Expected #{behavior} to define callback #{function}/#{arity}"
   end
 
   defp assert_optional_callback(behavior, function, arity) do
     optional_callbacks = behavior.behaviour_info(:optional_callbacks)
+
     assert {function, arity} in optional_callbacks,
            "Expected #{behavior} to define optional callback #{function}/#{arity}"
   end

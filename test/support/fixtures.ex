@@ -1,7 +1,7 @@
 defmodule ExJsonschema.TestFixtures do
   @moduledoc """
   Centralized test data and fixtures for ExJsonschema testing.
-  
+
   Provides:
   - Common schema definitions
   - Valid and invalid test instances
@@ -21,13 +21,13 @@ defmodule ExJsonschema.TestFixtures do
       ~s({"type": "null"}),
       ~s({"type": "array"}),
       ~s({"type": "object"}),
-      
+
       # Schemas with constraints
       ~s({"type": "string", "minLength": 1, "maxLength": 10}),
       ~s({"type": "number", "minimum": 0, "maximum": 100}),
       ~s({"type": "integer", "multipleOf": 5}),
       ~s({"type": "array", "minItems": 1, "maxItems": 5, "items": {"type": "string"}}),
-      
+
       # Object schemas
       ~s({
         "type": "object",
@@ -38,18 +38,18 @@ defmodule ExJsonschema.TestFixtures do
         "required": ["name"],
         "additionalProperties": false
       }),
-      
+
       # Enum schemas
       ~s({"enum": ["red", "green", "blue"]}),
       ~s({"type": "string", "enum": ["small", "medium", "large"]}),
-      
+
       # Pattern schemas
       ~s({"type": "string", "pattern": "^[a-z]+$"}),
-      
+
       # Format schemas
       ~s({"type": "string", "format": "email"}),
       ~s({"type": "string", "format": "date-time"}),
-      
+
       # Conditional schemas
       ~s({
         "type": "object",
@@ -65,7 +65,7 @@ defmodule ExJsonschema.TestFixtures do
           "required": ["age"]
         }
       }),
-      
+
       # Array tuple validation
       ~s({
         "type": "array",
@@ -85,17 +85,18 @@ defmodule ExJsonschema.TestFixtures do
       # Invalid JSON
       ~s({"type": "string),
       ~s({"type": string"}),
-      
+
       # Invalid schema structure
       ~s({"type": "invalid_type"}),
       ~s({"type": ["string", "invalid"]}),
       ~s({"minimum": "not_a_number"}),
       ~s({"properties": "not_an_object"}),
-      ~s({"items": true, "prefixItems": [{"type": "string"}]}), # conflicting keywords
-      
+      # conflicting keywords
+      ~s({"items": true, "prefixItems": [{"type": "string"}]}),
+
       # Invalid format
       ~s({"format": 123}),
-      ~s({"pattern": 123}),
+      ~s({"pattern": 123})
     ]
   end
 
@@ -111,7 +112,7 @@ defmodule ExJsonschema.TestFixtures do
       nulls: [~s(null)],
       arrays: [~s([]), ~s([1, 2, 3]), ~s(["a", "b"]), ~s([null])],
       objects: [~s({}), ~s({"key": "value"}), ~s({"nested": {"key": "value"}})],
-      
+
       # Invalid instances
       invalid_json: [~s({"key": value}), ~s([1, 2,]), ~s(undefined)]
     }
@@ -183,7 +184,6 @@ defmodule ExJsonschema.TestFixtures do
           "custom_field": "value"
         }
       }),
-      
       ~s({
         "user": {
           "id": 1,
@@ -203,7 +203,7 @@ defmodule ExJsonschema.TestFixtures do
     [
       # Missing required user
       ~s({"metadata": {}}),
-      
+
       # Invalid user id
       ~s({
         "user": {
@@ -211,7 +211,7 @@ defmodule ExJsonschema.TestFixtures do
           "profile": {"name": "John", "email": "john@example.com"}
         }
       }),
-      
+
       # Invalid email format
       ~s({
         "user": {
@@ -219,7 +219,7 @@ defmodule ExJsonschema.TestFixtures do
           "profile": {"name": "John", "email": "not-an-email"}
         }
       }),
-      
+
       # Missing required profile fields
       ~s({
         "user": {
@@ -227,7 +227,7 @@ defmodule ExJsonschema.TestFixtures do
           "profile": {"name": "John"}
         }
       }),
-      
+
       # Additional property at root level
       ~s({
         "user": {
@@ -236,7 +236,7 @@ defmodule ExJsonschema.TestFixtures do
         },
         "extra": "not allowed"
       }),
-      
+
       # Invalid contact format
       ~s({
         "user": {
@@ -258,11 +258,12 @@ defmodule ExJsonschema.TestFixtures do
   """
   def performance_data do
     large_array = 1..1000 |> Enum.map(&"item_#{&1}") |> Jason.encode!()
-    
-    large_object = 1..100 
-                   |> Map.new(&{"key_#{&1}", "value_#{&1}"}) 
-                   |> Jason.encode!()
-    
+
+    large_object =
+      1..100
+      |> Map.new(&{"key_#{&1}", "value_#{&1}"})
+      |> Jason.encode!()
+
     %{
       large_array: large_array,
       large_object: large_object,
@@ -282,7 +283,6 @@ defmodule ExJsonschema.TestFixtures do
           "name": {"type": "string"}
         }
       }),
-      
       draft6: ~s({
         "$schema": "http://json-schema.org/draft-06/schema#",
         "type": "object",
@@ -291,7 +291,6 @@ defmodule ExJsonschema.TestFixtures do
           "tags": {"type": "array", "contains": {"type": "string"}}
         }
       }),
-      
       draft7: ~s({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -299,7 +298,6 @@ defmodule ExJsonschema.TestFixtures do
         "then": {"required": ["name"]},
         "else": {"required": ["title"]}
       }),
-      
       draft201909: ~s({
         "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "object",
@@ -310,7 +308,6 @@ defmodule ExJsonschema.TestFixtures do
           }
         }
       }),
-      
       draft202012: ~s({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",

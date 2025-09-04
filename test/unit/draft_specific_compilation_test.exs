@@ -1,10 +1,10 @@
 defmodule ExJsonschema.DraftSpecificCompilationTest do
   @moduledoc """
   Tests for draft-specific compilation shortcuts and optimizations.
-  
+
   This module tests M3.5: Draft-specific compilation shortcuts.
   """
-  
+
   use ExUnit.Case, async: true
 
   describe "compile_draft4/2" do
@@ -214,10 +214,10 @@ defmodule ExJsonschema.DraftSpecificCompilationTest do
   describe "draft-specific compilation optimization verification" do
     test "all draft-specific compilation methods return compatible validators" do
       schema = ~s({"type": "string"})
-      
+
       # Compile with each method
       {:ok, draft4} = ExJsonschema.compile_draft4(schema)
-      {:ok, draft6} = ExJsonschema.compile_draft6(schema) 
+      {:ok, draft6} = ExJsonschema.compile_draft6(schema)
       {:ok, draft7} = ExJsonschema.compile_draft7(schema)
       {:ok, draft201909} = ExJsonschema.compile_draft201909(schema)
       {:ok, draft202012} = ExJsonschema.compile_draft202012(schema)
@@ -235,12 +235,15 @@ defmodule ExJsonschema.DraftSpecificCompilationTest do
 
       # All should reject the same invalid input
       invalid_json = ~s(123)
-      rejection_results = Enum.map(validators, fn validator ->
-        case ExJsonschema.validate(validator, invalid_json) do
-          {:error, _} -> true
-          _ -> false
-        end
-      end)
+
+      rejection_results =
+        Enum.map(validators, fn validator ->
+          case ExJsonschema.validate(validator, invalid_json) do
+            {:error, _} -> true
+            _ -> false
+          end
+        end)
+
       assert Enum.all?(rejection_results, & &1)
     end
 
@@ -253,9 +256,9 @@ defmodule ExJsonschema.DraftSpecificCompilationTest do
         },
         "required": ["name"]
       })
-      
+
       {:ok, compiled} = ExJsonschema.compile_draft7(schema)
-      
+
       # Valid data
       valid_json = ~s({"name": "John", "age": 30})
       assert :ok = ExJsonschema.validate(compiled, valid_json)
@@ -353,7 +356,7 @@ defmodule ExJsonschema.DraftSpecificCompilationTest do
       })
 
       assert {:ok, compiled} = ExJsonschema.compile_draft7(schema)
-      
+
       valid_json = ~s({
         "user": {
           "profile": {
@@ -365,13 +368,13 @@ defmodule ExJsonschema.DraftSpecificCompilationTest do
           }
         }
       })
-      
+
       assert :ok = ExJsonschema.validate(compiled, valid_json)
     end
 
     test "error handling is consistent across draft-specific methods" do
       invalid_schema = ~s({"type": "not_a_real_type"})
-      
+
       assert {:error, error1} = ExJsonschema.compile_draft4(invalid_schema)
       assert {:error, error2} = ExJsonschema.compile_draft6(invalid_schema)
       assert {:error, error3} = ExJsonschema.compile_draft7(invalid_schema)
@@ -380,9 +383,10 @@ defmodule ExJsonschema.DraftSpecificCompilationTest do
 
       # All should return CompilationError structs
       errors = [error1, error2, error3, error4, error5]
-      assert Enum.all?(errors, fn error -> 
-        match?(%ExJsonschema.CompilationError{}, error)
-      end)
+
+      assert Enum.all?(errors, fn error ->
+               match?(%ExJsonschema.CompilationError{}, error)
+             end)
     end
   end
 end

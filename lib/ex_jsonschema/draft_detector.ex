@@ -51,7 +51,8 @@ defmodule ExJsonschema.DraftDetector do
     # Draft 4
     "http://json-schema.org/draft-04/schema" => :draft4,
     "http://json-schema.org/draft-04/schema#" => :draft4,
-    "http://json-schema.org/schema#" => :draft4,  # Legacy
+    # Legacy
+    "http://json-schema.org/schema#" => :draft4,
 
     # Draft 6
     "http://json-schema.org/draft-06/schema" => :draft6,
@@ -85,7 +86,7 @@ defmodule ExJsonschema.DraftDetector do
   # Canonical URLs for each draft
   @canonical_urls %{
     draft4: "http://json-schema.org/draft-04/schema#",
-    draft6: "http://json-schema.org/draft-06/schema#", 
+    draft6: "http://json-schema.org/draft-06/schema#",
     draft7: "http://json-schema.org/draft-07/schema#",
     draft201909: "https://json-schema.org/draft/2019-09/schema",
     draft202012: "https://json-schema.org/draft/2020-12/schema"
@@ -121,7 +122,7 @@ defmodule ExJsonschema.DraftDetector do
     case Map.get(schema, "$schema") do
       val when is_integer(val) or is_float(val) or is_boolean(val) or is_list(val) ->
         {:error, "Invalid $schema value: must be a string, got #{inspect(val)}"}
-      
+
       _ ->
         # Convert map to JSON string for Rust NIF
         case Jason.encode(schema) do
@@ -169,7 +170,8 @@ defmodule ExJsonschema.DraftDetector do
         # Try pattern matching for unknown URLs
         case extract_draft_from_url_pattern(url) do
           {:ok, draft} -> {:ok, draft}
-          :error -> {:ok, @default_draft}  # Fallback to default instead of error
+          # Fallback to default instead of error
+          :error -> {:ok, @default_draft}
         end
 
       draft ->
@@ -274,7 +276,7 @@ defmodule ExJsonschema.DraftDetector do
     # Extract message from Rust error structure  
     message = error_map["message"] || "Unknown error"
     details = error_map["details"]
-    
+
     if details do
       {:error, "#{message}: #{details}"}
     else

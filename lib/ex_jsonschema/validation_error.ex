@@ -15,12 +15,21 @@ defmodule ExJsonschema.ValidationError do
           suggestions: [String.t()] | nil
         }
 
-  defstruct [:instance_path, :schema_path, :message, :keyword, :instance_value, 
-             :schema_value, :context, :annotations, :suggestions]
+  defstruct [
+    :instance_path,
+    :schema_path,
+    :message,
+    :keyword,
+    :instance_value,
+    :schema_value,
+    :context,
+    :annotations,
+    :suggestions
+  ]
 
   @doc """
   Creates a ValidationError from a map returned by the NIF.
-  
+
   Supports both detailed format (basic fields only) and verbose format 
   (with additional context, values, and suggestions).
   """

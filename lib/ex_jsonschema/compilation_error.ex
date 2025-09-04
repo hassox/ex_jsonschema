@@ -7,7 +7,13 @@ defmodule ExJsonschema.CompilationError do
   """
 
   @type t :: %__MODULE__{
-          type: :json_parse_error | :schema_validation_error | :compilation_error | :options_error | :detection_error | :validation_error,
+          type:
+            :json_parse_error
+            | :schema_validation_error
+            | :compilation_error
+            | :options_error
+            | :detection_error
+            | :validation_error,
           message: String.t(),
           details: String.t() | nil
         }

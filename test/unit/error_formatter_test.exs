@@ -82,13 +82,17 @@ defmodule ExJsonschema.ErrorFormatterTest do
       assert ErrorFormatter.format([], :human) == "No validation errors found."
       assert ErrorFormatter.format([], :json) == "[]"
       assert ErrorFormatter.format([], :table) == "No validation errors found."
-      assert ErrorFormatter.format([], :markdown) == "## Validation Results\n\nNo validation errors found."
-      assert ErrorFormatter.format([], :llm) == "VALIDATION_STATUS: SUCCESS\nNo validation errors detected in the JSON document."
+
+      assert ErrorFormatter.format([], :markdown) ==
+               "## Validation Results\n\nNo validation errors found."
+
+      assert ErrorFormatter.format([], :llm) ==
+               "VALIDATION_STATUS: SUCCESS\nNo validation errors detected in the JSON document."
     end
 
     test "supports all format options" do
       errors = [simple_error()]
-      
+
       # Should not raise for all available formats
       assert is_binary(ErrorFormatter.format(errors, :human))
       assert is_binary(ErrorFormatter.format(errors, :json))
@@ -159,14 +163,15 @@ defmodule ExJsonschema.ErrorFormatterTest do
     end
 
     test "truncates very long error lists" do
-      many_errors = Enum.map(1..25, fn i ->
-        %ValidationError{
-          instance_path: "/item_#{i}",
-          schema_path: "/properties/item_#{i}/type",
-          message: "invalid value #{i}",
-          keyword: "type"
-        }
-      end)
+      many_errors =
+        Enum.map(1..25, fn i ->
+          %ValidationError{
+            instance_path: "/item_#{i}",
+            schema_path: "/properties/item_#{i}/type",
+            message: "invalid value #{i}",
+            keyword: "type"
+          }
+        end)
 
       result = ErrorFormatter.format(many_errors, :human)
       # Default max_errors is 20, so should truncate at 20 and show "... and 5 more errors"
@@ -272,10 +277,10 @@ defmodule ExJsonschema.ErrorFormatterTest do
 
       result = ErrorFormatter.format(errors, :table)
       lines = String.split(result, "\n")
-      
+
       # Check that we have header and separator lines
       assert length(lines) >= 4
-      
+
       # Check for proper table structure
       assert Enum.any?(lines, &String.contains?(&1, "|"))
       assert result =~ "/short"
@@ -292,7 +297,7 @@ defmodule ExJsonschema.ErrorFormatterTest do
 
       result = ErrorFormatter.format([error], :table)
       lines = String.split(result, "\n")
-      
+
       # No line should be excessively long
       max_line_length = lines |> Enum.map(&String.length/1) |> Enum.max()
       assert max_line_length < 150
@@ -301,7 +306,7 @@ defmodule ExJsonschema.ErrorFormatterTest do
     test "handles missing optional fields in table" do
       error = %ValidationError{
         instance_path: "/test",
-        schema_path: "/test", 
+        schema_path: "/test",
         message: "test message",
         keyword: nil,
         instance_value: nil,
@@ -316,14 +321,15 @@ defmodule ExJsonschema.ErrorFormatterTest do
     end
 
     test "shows summary for many errors" do
-      many_errors = Enum.map(1..15, fn i ->
-        %ValidationError{
-          instance_path: "/item#{i}",
-          schema_path: "/item#{i}",
-          message: "error #{i}",
-          keyword: "type"
-        }
-      end)
+      many_errors =
+        Enum.map(1..15, fn i ->
+          %ValidationError{
+            instance_path: "/item#{i}",
+            schema_path: "/item#{i}",
+            message: "error #{i}",
+            keyword: "type"
+          }
+        end)
 
       result = ErrorFormatter.format(many_errors, :table)
       # Should show all 15 errors in table format since it's within the default limit
@@ -337,24 +343,25 @@ defmodule ExJsonschema.ErrorFormatterTest do
   describe "format/3 with options" do
     test "supports color option for human format" do
       error = simple_error()
-      
+
       with_color = ErrorFormatter.format([error], :human, color: true)
       without_color = ErrorFormatter.format([error], :human, color: false)
-      
+
       # With color should contain ANSI escape codes
-      assert with_color =~ "\e[" 
+      assert with_color =~ "\e["
       # Without color should not
       refute without_color =~ "\e["
     end
 
     test "supports max_errors option" do
-      errors = Enum.map(1..10, fn i ->
-        %ValidationError{
-          instance_path: "/item#{i}",
-          message: "error #{i}",
-          keyword: "type"
-        }
-      end)
+      errors =
+        Enum.map(1..10, fn i ->
+          %ValidationError{
+            instance_path: "/item#{i}",
+            message: "error #{i}",
+            keyword: "type"
+          }
+        end)
 
       result = ErrorFormatter.format(errors, :human, max_errors: 3)
       assert result =~ "Error 1:"
@@ -365,10 +372,10 @@ defmodule ExJsonschema.ErrorFormatterTest do
 
     test "supports compact option for table format" do
       errors = [sample_error(), simple_error()]
-      
+
       compact = ErrorFormatter.format(errors, :table, compact: true)
       normal = ErrorFormatter.format(errors, :table, compact: false)
-      
+
       # Compact should have fewer lines
       compact_lines = length(String.split(compact, "\n"))
       normal_lines = length(String.split(normal, "\n"))
@@ -377,10 +384,10 @@ defmodule ExJsonschema.ErrorFormatterTest do
 
     test "supports pretty option for JSON format" do
       error = sample_error()
-      
+
       pretty = ErrorFormatter.format([error], :json, pretty: true)
       compact = ErrorFormatter.format([error], :json, pretty: false)
-      
+
       # Pretty should have more whitespace/newlines
       assert String.length(pretty) > String.length(compact)
       assert pretty =~ "\n"
@@ -388,7 +395,7 @@ defmodule ExJsonschema.ErrorFormatterTest do
 
     test "validates option values" do
       error = simple_error()
-      
+
       assert_raise ArgumentError, fn ->
         ErrorFormatter.format([error], :human, max_errors: -1)
       end
@@ -400,7 +407,7 @@ defmodule ExJsonschema.ErrorFormatterTest do
 
     test "ignores unknown options gracefully" do
       error = simple_error()
-      
+
       # Should not raise, should ignore unknown options
       result = ErrorFormatter.format([error], :human, unknown_option: true)
       assert is_binary(result)
@@ -429,7 +436,7 @@ defmodule ExJsonschema.ErrorFormatterTest do
       assert is_binary(human_result)
       assert is_binary(json_result)
       assert is_binary(table_result)
-      
+
       # JSON should be parseable
       assert {:ok, _} = Jason.decode(json_result)
     end
@@ -489,11 +496,11 @@ defmodule ExJsonschema.ErrorFormatterTest do
 
     test "respects heading level option" do
       error = simple_error()
-      
+
       result_h1 = ErrorFormatter.format([error], :markdown, heading_level: 1)
       assert result_h1 =~ "# Validation Errors"
       assert result_h1 =~ "## Error 1"
-      
+
       result_h4 = ErrorFormatter.format([error], :markdown, heading_level: 4)
       assert result_h4 =~ "#### Validation Errors"
       assert result_h4 =~ "##### Error 1"
@@ -524,15 +531,16 @@ defmodule ExJsonschema.ErrorFormatterTest do
         message: "Value `*bold*` and _italic_ and [link] failed",
         keyword: "pattern"
       }
-      
+
       result = ErrorFormatter.format([error], :markdown)
       assert result =~ "Value \\`\\*bold\\*\\` and \\_italic\\_ and \\[link\\] failed"
     end
 
     test "handles max_errors truncation" do
-      many_errors = Enum.map(1..10, fn i ->
-        %ValidationError{instance_path: "/item#{i}", message: "error #{i}", keyword: "type"}
-      end)
+      many_errors =
+        Enum.map(1..10, fn i ->
+          %ValidationError{instance_path: "/item#{i}", message: "error #{i}", keyword: "type"}
+        end)
 
       result = ErrorFormatter.format(many_errors, :markdown, max_errors: 3)
       assert result =~ "Found **10** validation errors (showing first 3)"
@@ -611,15 +619,18 @@ defmodule ExJsonschema.ErrorFormatterTest do
     end
 
     test "shows truncation notice" do
-      many_errors = Enum.map(1..25, fn i ->
-        %ValidationError{instance_path: "/item#{i}", message: "error #{i}", keyword: "type"}
-      end)
+      many_errors =
+        Enum.map(1..25, fn i ->
+          %ValidationError{instance_path: "/item#{i}", message: "error #{i}", keyword: "type"}
+        end)
 
       prose_result = ErrorFormatter.format(many_errors, :llm, max_errors: 5)
       assert prose_result =~ "failed validation with 25 errors:"
       assert prose_result =~ "Note: 20 additional errors were truncated"
 
-      structured_result = ErrorFormatter.format(many_errors, :llm, structured: true, max_errors: 5)
+      structured_result =
+        ErrorFormatter.format(many_errors, :llm, structured: true, max_errors: 5)
+
       assert structured_result =~ "ERROR_COUNT: 25"
       assert structured_result =~ "ERRORS_SHOWN: 5"
       assert structured_result =~ "TRUNCATED: 20 additional errors not shown"
@@ -636,7 +647,7 @@ defmodule ExJsonschema.ErrorFormatterTest do
 
       prose_result = ErrorFormatter.format([minimal_error], :llm)
       assert prose_result =~ "1. At location `/test`: validation failed"
-      
+
       structured_result = ErrorFormatter.format([minimal_error], :llm, structured: true)
       assert structured_result =~ "KEYWORD: unknown"
       refute structured_result =~ "SUGGESTIONS:"
@@ -646,7 +657,7 @@ defmodule ExJsonschema.ErrorFormatterTest do
   describe "available_formats/0" do
     test "returns all available formats" do
       formats = ErrorFormatter.available_formats()
-      
+
       assert :human in formats
       assert :json in formats
       assert :table in formats
@@ -657,7 +668,7 @@ defmodule ExJsonschema.ErrorFormatterTest do
 
     test "returned formats work with format/2" do
       error = simple_error()
-      
+
       # All returned formats should be usable
       for format <- ErrorFormatter.available_formats() do
         result = ErrorFormatter.format([error], format)
@@ -703,7 +714,9 @@ defmodule ExJsonschema.ErrorFormatterTest do
       result1 = ErrorFormatter.format([error], :markdown, heading_level: 3, include_toc: true)
       assert is_binary(result1)
 
-      result2 = ErrorFormatter.format([error], :llm, structured: true, include_schema_context: false)
+      result2 =
+        ErrorFormatter.format([error], :llm, structured: true, include_schema_context: false)
+
       assert is_binary(result2)
     end
   end

@@ -69,6 +69,34 @@ impl CompiledSchema {
         })
     }
 
+    fn new_with_draft(schema: Value, draft: Atom) -> Result<Self, JsonSchemaError> {
+        let validator = if draft == atoms::draft4() {
+            jsonschema::draft4::new(&schema)
+                .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?
+        } else if draft == atoms::draft6() {
+            jsonschema::draft6::new(&schema)
+                .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?
+        } else if draft == atoms::draft7() {
+            jsonschema::draft7::new(&schema)
+                .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?
+        } else if draft == atoms::draft201909() {
+            jsonschema::draft201909::new(&schema)
+                .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?
+        } else if draft == atoms::draft202012() {
+            jsonschema::draft202012::new(&schema)
+                .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?
+        } else {
+            // Default to generic validator for unknown drafts
+            jsonschema::validator_for(&schema)
+                .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?
+        };
+
+        Ok(CompiledSchema {
+            validator: AssertUnwindSafe(validator),
+            schema: schema.clone(),
+        })
+    }
+
     fn validate(&self, instance: &Value) -> Result<(), JsonSchemaError> {
         if self.validator.is_valid(instance) {
             Ok(())
@@ -154,6 +182,67 @@ fn compile_schema(env: Env, schema_json: String) -> Term {
     };
 
     let compiled = match CompiledSchema::new(schema_value) {
+        Ok(compiled) => compiled,
+        Err(JsonSchemaError::CompilationError(msg)) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "compilation_error".encode(env))
+                .unwrap()
+                .map_put(
+                    "message".encode(env),
+                    "Schema compilation failed".encode(env),
+                )
+                .unwrap()
+                .map_put("details".encode(env), msg.encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+        Err(e) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "compilation_error".encode(env))
+                .unwrap()
+                .map_put(
+                    "message".encode(env),
+                    "Unknown compilation error".encode(env),
+                )
+                .unwrap()
+                .map_put("details".encode(env), format!("{}", e).encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+    };
+
+    let resource = ResourceArc::new(compiled);
+    (atoms::ok(), resource).encode(env)
+}
+
+#[rustler::nif]
+fn compile_schema_with_draft(env: Env, schema_json: String, draft: Atom) -> Term {
+    let schema_value: Value = match serde_json::from_str(&schema_json) {
+        Ok(value) => value,
+        Err(e) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "json_parse_error".encode(env))
+                .unwrap()
+                .map_put(
+                    "message".encode(env),
+                    format!("Invalid JSON: {}", e).encode(env),
+                )
+                .unwrap()
+                .map_put(
+                    "details".encode(env),
+                    format!(
+                        "Failed to parse JSON at line {}, column {}",
+                        e.line(),
+                        e.column()
+                    )
+                    .encode(env),
+                )
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+    };
+
+    let compiled = match CompiledSchema::new_with_draft(schema_value, draft) {
         Ok(compiled) => compiled,
         Err(JsonSchemaError::CompilationError(msg)) => {
             let error_map = rustler::types::map::map_new(env)

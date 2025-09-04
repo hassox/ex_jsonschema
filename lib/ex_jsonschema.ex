@@ -194,10 +194,39 @@ defmodule ExJsonschema do
   Each format automatically handles complex nested paths, unicode characters,
   and rich error context including suggestions and schema metadata.
 
+  ## Draft-Specific Compilation Shortcuts
+
+  ExJsonschema provides optimized compilation functions for each supported JSON Schema draft:
+
+      # Draft 4 (legacy applications)
+      {:ok, validator} = ExJsonschema.compile_draft4(schema)
+      
+      # Draft 6 (const and contains keywords)
+      {:ok, validator} = ExJsonschema.compile_draft6(schema)
+      
+      # Draft 7 (most common, conditional schemas)
+      {:ok, validator} = ExJsonschema.compile_draft7(schema)
+      
+      # Draft 2019-09 (modern features)
+      {:ok, validator} = ExJsonschema.compile_draft201909(schema)
+      
+      # Draft 2020-12 (latest specification)
+      {:ok, validator} = ExJsonschema.compile_draft202012(schema)
+      
+      # Automatic draft detection from $schema
+      {:ok, validator} = ExJsonschema.compile_auto_draft(schema)
+
+  These functions provide:
+  - **Performance optimization** - Uses draft-specific validators from the Rust crate
+  - **Feature accuracy** - Ensures validation matches the exact draft specification
+  - **Developer clarity** - Makes draft intentions explicit in your code
+  - **Compatibility** - All shortcuts support the same options as `compile/2`
+
   ## Features
 
   - High-performance validation using Rust (1.4M-1.9M validations/second)
-  - Support for JSON Schema draft-07, draft 2019-09, and draft 2020-12
+  - Support for JSON Schema draft-04, draft-06, draft-07, draft 2019-09, and draft 2020-12
+  - **Draft-specific compilation shortcuts** for optimal performance and accuracy
   - Multiple output formats: basic (fastest), detailed (default), verbose (comprehensive)
   - Configurable validation options for format validation, error handling, and annotations
   - Both keyword list and Options struct interfaces
@@ -521,6 +550,103 @@ defmodule ExJsonschema do
   end
 
   @doc """
+  Compiles a JSON Schema using Draft 4 specific optimizations.
+
+  This provides a direct shortcut to compile schemas specifically for Draft 4,
+  which can be faster than using the generic `compile/2` with draft options.
+
+  ## Examples
+
+      iex> schema = ~s({"type": "string"})
+      iex> {:ok, compiled} = ExJsonschema.compile_draft4(schema)
+      iex> is_reference(compiled)
+      true
+
+      # With additional options
+      iex> {:ok, compiled} = ExJsonschema.compile_draft4(schema, validate_formats: true)
+      iex> is_reference(compiled)
+      true
+
+  """
+  @spec compile_draft4(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  def compile_draft4(schema_json, options \\ []) when is_binary(schema_json) do
+    options_with_draft = Keyword.put(options, :draft, :draft4)
+    compile(schema_json, options_with_draft)
+  end
+
+  @doc """
+  Compiles a JSON Schema using Draft 6 specific optimizations.
+
+  ## Examples
+
+      iex> schema = ~s({"type": "string"})
+      iex> {:ok, compiled} = ExJsonschema.compile_draft6(schema)
+      iex> is_reference(compiled)
+      true
+
+  """
+  @spec compile_draft6(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  def compile_draft6(schema_json, options \\ []) when is_binary(schema_json) do
+    options_with_draft = Keyword.put(options, :draft, :draft6)
+    compile(schema_json, options_with_draft)
+  end
+
+  @doc """
+  Compiles a JSON Schema using Draft 7 specific optimizations.
+
+  Draft 7 is widely used and includes support for conditional schemas with `if`, `then`, `else`.
+
+  ## Examples
+
+      iex> schema = ~s({"type": "string"})
+      iex> {:ok, compiled} = ExJsonschema.compile_draft7(schema)
+      iex> is_reference(compiled)
+      true
+
+  """
+  @spec compile_draft7(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  def compile_draft7(schema_json, options \\ []) when is_binary(schema_json) do
+    options_with_draft = Keyword.put(options, :draft, :draft7)
+    compile(schema_json, options_with_draft)
+  end
+
+  @doc """
+  Compiles a JSON Schema using Draft 2019-09 specific optimizations.
+
+  ## Examples
+
+      iex> schema = ~s({"type": "string"})
+      iex> {:ok, compiled} = ExJsonschema.compile_draft201909(schema)
+      iex> is_reference(compiled)
+      true
+
+  """
+  @spec compile_draft201909(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  def compile_draft201909(schema_json, options \\ []) when is_binary(schema_json) do
+    options_with_draft = Keyword.put(options, :draft, :draft201909)
+    compile(schema_json, options_with_draft)
+  end
+
+  @doc """
+  Compiles a JSON Schema using Draft 2020-12 specific optimizations.
+
+  Draft 2020-12 is the latest specification with the most comprehensive feature set.
+
+  ## Examples
+
+      iex> schema = ~s({"type": "string"})
+      iex> {:ok, compiled} = ExJsonschema.compile_draft202012(schema)
+      iex> is_reference(compiled)
+      true
+
+  """
+  @spec compile_draft202012(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  def compile_draft202012(schema_json, options \\ []) when is_binary(schema_json) do
+    options_with_draft = Keyword.put(options, :draft, :draft202012)
+    compile(schema_json, options_with_draft)
+  end
+
+  @doc """
   Detects the JSON Schema draft version from a schema document.
 
   This function examines the `$schema` property to determine which JSON Schema
@@ -565,6 +691,33 @@ defmodule ExJsonschema do
   @spec supported_drafts() :: [Options.draft()]
   def supported_drafts do
     DraftDetector.supported_drafts()
+  end
+
+  @doc """
+  Compiles a schema using the automatically detected draft version.
+
+  This is a convenience function that combines `detect_draft/1` and `compile/2` 
+  to automatically select the most appropriate draft for the schema.
+
+  ## Examples
+
+      # Schema with explicit $schema
+      iex> schema = ~s({"$schema": "http://json-schema.org/draft-07/schema#", "type": "string"})
+      iex> {:ok, compiled} = ExJsonschema.compile_auto_draft(schema)
+      iex> is_reference(compiled)
+      true
+
+      # Schema without $schema (defaults to latest)
+      iex> schema = ~s({"type": "number"})
+      iex> {:ok, compiled} = ExJsonschema.compile_auto_draft(schema)
+      iex> is_reference(compiled)
+      true
+
+  """
+  @spec compile_auto_draft(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  def compile_auto_draft(schema_json, options \\ []) when is_binary(schema_json) do
+    options_with_auto = Keyword.put(options, :draft, :auto)
+    compile(schema_json, options_with_auto)
   end
 
   @doc """
@@ -773,13 +926,23 @@ defmodule ExJsonschema do
     compile_with_native_options(schema_json, options)
   end
 
-  defp compile_with_native_options(schema_json, %Options{} = options) do
-    # For M1.4: Options-aware compilation with validation
+  defp compile_with_native_options(schema_json, %Options{draft: draft} = options) do
+    # For M3.5: Draft-specific compilation with validation
     case validate_compilation_options(schema_json, options) do
       :ok ->
-        # Use the validated options - for now, we use basic compilation
-        # Full options support will come in later milestones
-        case Native.compile_schema(schema_json) do
+        # Use draft-specific compilation when draft is specified (not :auto)
+        result = case draft do
+          :auto ->
+            # Already resolved by compile_with_options, shouldn't reach here
+            Native.compile_schema(schema_json)
+          draft when draft in [:draft4, :draft6, :draft7, :draft201909, :draft202012] ->
+            Native.compile_schema_with_draft(schema_json, draft)
+          _ ->
+            # Fallback to generic compilation
+            Native.compile_schema(schema_json)
+        end
+        
+        case result do
           {:ok, compiled} -> {:ok, compiled}
           {:error, error_map} -> {:error, CompilationError.from_map(error_map)}
         end

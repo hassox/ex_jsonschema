@@ -28,6 +28,9 @@ defmodule ExJsonschema.MixProject do
         ignore_modules: [
           # Exclude Mix tasks from coverage requirements
           Mix.Tasks.Benchmark,
+          Mix.Tasks.Demo,
+          # Exclude native NIF module (only contains stub functions)
+          ExJsonschema.Native,
           # Exclude protocol implementations (these are auto-generated)
           Inspect.ExJsonschema.ValidationError,
           String.Chars.ExJsonschema.ValidationError,

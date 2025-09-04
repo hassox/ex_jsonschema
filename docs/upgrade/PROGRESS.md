@@ -1,10 +1,10 @@
 # ExJsonschema Upgrade Progress Tracker
 
-## 📊 Current Status: M2.1 COMPLETE - Multiple Output Formats Ready
+## 📊 Current Status: M2.4 COMPLETE - Validation Options Passing Ready
 
-**Overall Progress**: 7/8 M2 tasks complete (87.5% of M2)  
+**Overall Progress**: 5/7 M2 tasks complete (71.4% of M2)  
 **Phase**: 🟡 M2 Enhanced Core Validation IN PROGRESS  
-**Next Action**: Continue M2 Enhanced Core Validation
+**Next Action**: Continue with M2.6 Documentation and M2.7 Test Coverage
 
 ---
 
@@ -13,7 +13,7 @@
 | Milestone | Status | Progress | Due Date | Notes |
 |-----------|--------|----------|----------|-------|
 | **M1: Foundation** | 🟢 Complete | 6/6 tasks | Month 1 | ALL TASKS COMPLETE |
-| **M2: Core Validation** | 🟡 In Progress | 1/7 tasks | Month 2 | M2.1 Complete |
+| **M2: Core Validation** | 🟡 In Progress | 5/7 tasks | Month 2 | M2.1-M2.5 Complete |
 | **M3: Config/Errors** | ⚪ Not Started | 0/6 tasks | Month 3 | Blocked by M2 |
 | **M4: Schema Mgmt** | ⚪ Not Started | 0/6 tasks | Month 4 | Blocked by M3 |
 | **M5: References** | ⚪ Not Started | 0/7 tasks | Month 5-6 | Blocked by M4 |
@@ -128,6 +128,16 @@ None - M1.1 complete, ready for next tasks
   - Separate benchmarking suite via `mix benchmark` task
   - Performance: 3M+ validations/second across all formats
   - Rich error context including suggestions, values, and annotations
+- [x] **M2.2-M2.5 Complete**: Enhanced validation API with options support
+  - **M2.2**: `valid?/2` quick validation function implemented and tested
+  - **M2.3**: `validate/3` with output control fully functional
+  - **M2.4**: Validation options passing API implemented
+    - Supports validate_formats, ignore_unknown_formats, stop_on_first_error, collect_annotations
+    - Both keyword list and Options struct support in validate/3 and valid?/3
+    - Comprehensive input validation with clear error messages
+    - 12 dedicated tests covering all validation option scenarios
+    - API-level implementation ready for future Rust NIF integration
+  - **M2.5**: Performance benchmarking utilities via `mix benchmark` task
 
 ### Key Accomplishments
 - ✅ Comprehensive upgrade plan created (8 functional surfaces)

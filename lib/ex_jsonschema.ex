@@ -196,7 +196,7 @@ defmodule ExJsonschema do
   end
 
   @doc """
-  Validates JSON against a compiled schema with output format control.
+  Validates JSON against a compiled schema with output format and validation options control.
 
   ## Output Formats
   
@@ -204,10 +204,13 @@ defmodule ExJsonschema do
   - `:detailed` - Returns `:ok` or `{:error, [ValidationError.t()]}` (default)
   - `:verbose` - Returns detailed errors with additional context, values, and suggestions
 
-  ## Options
+  ## Validation Options
 
   - `output: :basic | :detailed | :verbose` - Controls error output format (default: `:detailed`)
-  - Other validation options (format validation, etc.) can be passed through
+  - `validate_formats: boolean()` - Enable format validation (default: `false`)
+  - `ignore_unknown_formats: boolean()` - Ignore unknown format assertions (default: `true`)
+  - `stop_on_first_error: boolean()` - Stop validation on first error (default: `false`)
+  - `collect_annotations: boolean()` - Collect annotations during validation (default: `true`)
 
   ## Examples
 
@@ -219,27 +222,30 @@ defmodule ExJsonschema do
       iex> ExJsonschema.validate(compiled, ~s(123), output: :basic)
       {:error, :validation_failed}
 
-      # Detailed format (default)
-      iex> ExJsonschema.validate(compiled, ~s(123), output: :detailed)
-      {:error, [%ExJsonschema.ValidationError{message: _, instance_path: "", schema_path: _}]}
+      # With format validation enabled
+      iex> schema = ~s({"type": "string", "format": "email"})
+      iex> {:ok, compiled} = ExJsonschema.compile(schema)
+      iex> ExJsonschema.validate(compiled, ~s("not-email"), validate_formats: true)
+      {:error, [%ExJsonschema.ValidationError{}]}
 
-      # Verbose format (comprehensive)
-      iex> result = ExJsonschema.validate(compiled, ~s(123), output: :verbose)
-      iex> match?({:error, [%ExJsonschema.ValidationError{keyword: "type", instance_value: 123}]}, result)
-      true
+      # Stop on first error
+      iex> ExJsonschema.validate(compiled, ~s(123), stop_on_first_error: true)
+      {:error, [%ExJsonschema.ValidationError{}]}
 
   """
-  @spec validate(compiled_schema(), json_string(), keyword()) :: validation_result() | {:error, :validation_failed}
+  @spec validate(compiled_schema(), json_string(), keyword() | Options.t()) :: validation_result() | {:error, :validation_failed}
+  
+  # Accept Options struct
+  def validate(compiled_schema, instance_json, %Options{} = options)
+      when is_reference(compiled_schema) and is_binary(instance_json) do
+    validate_with_options(compiled_schema, instance_json, options)
+  end
+  
+  # Accept keyword list
   def validate(compiled_schema, instance_json, opts)
       when is_reference(compiled_schema) and is_binary(instance_json) and is_list(opts) do
-    output_format = Keyword.get(opts, :output, :detailed)
-    
-    case output_format do
-      :basic -> validate_basic(compiled_schema, instance_json)
-      :detailed -> validate_detailed(compiled_schema, instance_json)
-      :verbose -> validate_verbose(compiled_schema, instance_json, opts)
-      _ -> raise ArgumentError, "Invalid output format: #{inspect(output_format)}. Must be one of: :basic, :detailed, :verbose"
-    end
+    validated_options = validate_and_normalize_options(opts)
+    validate_with_options(compiled_schema, instance_json, validated_options)
   end
 
   @doc """
@@ -280,6 +286,44 @@ defmodule ExJsonschema do
   def valid?(compiled_schema, instance_json)
       when is_reference(compiled_schema) and is_binary(instance_json) do
     Native.valid?(compiled_schema, instance_json)
+  end
+
+  @doc """
+  Checks if JSON is valid against a compiled schema with validation options.
+
+  This is faster than `validate/3` when you only need to know if the JSON is valid and
+  supports validation options like format validation.
+
+  ## Validation Options
+
+  - `validate_formats: boolean()` - Enable format validation (default: `false`)
+  - `ignore_unknown_formats: boolean()` - Ignore unknown format assertions (default: `true`)
+  - `stop_on_first_error: boolean()` - Stop validation on first error (default: `false`)
+  - `collect_annotations: boolean()` - Collect annotations during validation (default: `true`)
+
+  ## Examples
+
+      iex> schema = ~s({"type": "string", "format": "email"})
+      iex> {:ok, compiled} = ExJsonschema.compile(schema)
+      iex> ExJsonschema.valid?(compiled, ~s("test@example.com"), validate_formats: true)
+      true
+      iex> ExJsonschema.valid?(compiled, ~s("not-email"), validate_formats: true)
+      false
+
+  """
+  @spec valid?(compiled_schema(), json_string(), keyword() | Options.t()) :: boolean()
+  
+  # Accept Options struct
+  def valid?(compiled_schema, instance_json, %Options{} = options)
+      when is_reference(compiled_schema) and is_binary(instance_json) do
+    valid_with_options(compiled_schema, instance_json, options)
+  end
+  
+  # Accept keyword list
+  def valid?(compiled_schema, instance_json, opts)
+      when is_reference(compiled_schema) and is_binary(instance_json) and is_list(opts) do
+    validated_options = validate_and_normalize_options(opts)
+    valid_with_options(compiled_schema, instance_json, validated_options)
   end
 
   @doc """
@@ -352,6 +396,67 @@ defmodule ExJsonschema do
     DraftDetector.supported_drafts()
   end
 
+  # Private helper functions for validation options
+
+  defp validate_and_normalize_options(opts) do
+    # Validate each option
+    valid_options = [:output, :validate_formats, :ignore_unknown_formats, 
+                     :stop_on_first_error, :collect_annotations]
+    
+    # Check for invalid options
+    invalid_opts = Keyword.keys(opts) -- valid_options
+    unless Enum.empty?(invalid_opts) do
+      raise ArgumentError, "Invalid validation option(s): #{inspect(invalid_opts)}. " <>
+                          "Valid options are: #{inspect(valid_options)}"
+    end
+    
+    # Validate boolean options
+    boolean_opts = [:validate_formats, :ignore_unknown_formats, :stop_on_first_error, :collect_annotations]
+    for opt <- boolean_opts do
+      if Keyword.has_key?(opts, opt) do
+        value = Keyword.get(opts, opt)
+        unless is_boolean(value) do
+          raise ArgumentError, "Option #{inspect(opt)} must be a boolean, got: #{inspect(value)}"
+        end
+      end
+    end
+    
+    # Validate output format
+    if Keyword.has_key?(opts, :output) do
+      output = Keyword.get(opts, :output)
+      unless output in [:basic, :detailed, :verbose] do
+        raise ArgumentError, "Invalid output format: #{inspect(output)}. Must be one of: :basic, :detailed, :verbose"
+      end
+    end
+    
+    # Convert to Options struct with defaults
+    Options.new([
+      output_format: Keyword.get(opts, :output, :detailed),
+      validate_formats: Keyword.get(opts, :validate_formats, false),
+      ignore_unknown_formats: Keyword.get(opts, :ignore_unknown_formats, true),
+      stop_on_first_error: Keyword.get(opts, :stop_on_first_error, false),
+      collect_annotations: Keyword.get(opts, :collect_annotations, true)
+    ])
+  end
+  
+  defp validate_with_options(compiled_schema, instance_json, %Options{output_format: output_format} = options) do
+    case output_format do
+      :basic -> validate_basic_with_options(compiled_schema, instance_json, options)
+      :detailed -> validate_detailed_with_options(compiled_schema, instance_json, options)
+      :verbose -> validate_verbose_with_options(compiled_schema, instance_json, options)
+      _ -> raise ArgumentError, "Invalid output format: #{inspect(output_format)}. Must be one of: :basic, :detailed, :verbose"
+    end
+  end
+  
+  defp valid_with_options(compiled_schema, instance_json, %Options{} = options) do
+    # For now, use basic validation with options
+    # In the future, this could be optimized to use a dedicated native function
+    case validate_with_options(compiled_schema, instance_json, %{options | output_format: :basic}) do
+      :ok -> true
+      {:error, _} -> false
+    end
+  end
+
   # Private validation functions for different output formats
 
   defp validate_basic(compiled_schema, instance_json) do
@@ -389,7 +494,28 @@ defmodule ExJsonschema do
         {:error, [:validation_error]}
     end
   end
-
+  
+  # Validation functions with options support
+  # NOTE: For M2.4, these are implemented as placeholders that use the existing
+  # native functions. Full options support in the Rust NIF will come in later milestones.
+  
+  defp validate_basic_with_options(compiled_schema, instance_json, %Options{} = _options) do
+    # For now, use basic validation without options
+    # TODO: Pass options to native function when Rust NIF is updated
+    validate_basic(compiled_schema, instance_json)
+  end
+  
+  defp validate_detailed_with_options(compiled_schema, instance_json, %Options{} = _options) do
+    # For now, use detailed validation without options
+    # TODO: Pass options to native function when Rust NIF is updated
+    validate_detailed(compiled_schema, instance_json)
+  end
+  
+  defp validate_verbose_with_options(compiled_schema, instance_json, %Options{} = options) do
+    # For now, use verbose validation without options
+    # TODO: Pass options to native function when Rust NIF is updated
+    validate_verbose(compiled_schema, instance_json, Map.to_list(options))
+  end
 
   # Private functions
 

@@ -62,7 +62,36 @@ end)
 
 ## 🎛️ Advanced Features
 
-ExJsonschema supports multiple output formats and validation options. See the [API documentation](https://hexdocs.pm/ex_jsonschema) for comprehensive details.
+### Configuration Profiles
+
+ExJsonschema provides three optimized configuration profiles for common use cases:
+
+```elixir
+# Strict validation for APIs and compliance
+strict_opts = ExJsonschema.Options.new(:strict)
+{:ok, validator} = ExJsonschema.compile(schema, strict_opts)
+
+# Lenient validation for user forms and UX
+lenient_opts = ExJsonschema.Options.new(:lenient) 
+ExJsonschema.validate(validator, user_data, lenient_opts)
+
+# Performance-optimized for high-volume processing
+perf_opts = ExJsonschema.Options.new(:performance)
+is_valid = ExJsonschema.valid?(validator, data, perf_opts)
+
+# Customize any profile with overrides
+custom = ExJsonschema.Options.new({:strict, [output_format: :basic]})
+
+# Create your own custom profile
+api_profile = ExJsonschema.Options.new(
+  validate_formats: true,
+  output_format: :detailed,
+  stop_on_first_error: true,
+  draft: :draft7
+)
+```
+
+### Flexible Validation Options
 
 ```elixir
 # Multiple output formats
@@ -74,7 +103,17 @@ ExJsonschema.validate(validator, json, validate_formats: true)
 # Options struct for reusable configuration  
 opts = ExJsonschema.Options.new(validate_formats: true)
 ExJsonschema.validate(validator, json, opts)
+
+# Profile-based configuration
+opts = ExJsonschema.Profile.strict(draft: :draft7)
+ExJsonschema.validate(validator, json, opts)
+
+# Use your custom profile anywhere
+{:ok, validator} = ExJsonschema.compile(schema, api_profile)
+ExJsonschema.validate(validator, json, api_profile)
 ```
+
+See the [API documentation](https://hexdocs.pm/ex_jsonschema) for comprehensive details.
 
 ## 📖 API Reference
 
@@ -218,8 +257,30 @@ mix benchmark --iterations 5000
 
 1. **Compile once, validate many**: Compiled schemas are significantly faster for repeated validation
 2. **Choose the right output format**: Use `:basic` for maximum speed when you only need pass/fail
-3. **Enable format validation selectively**: Only use `validate_formats: true` when needed
-4. **Use `valid?/2` for boolean checks**: Faster than `validate/2` when you don't need error details
+3. **Use configuration profiles**: The `:performance` profile is optimized for high-throughput scenarios
+4. **Enable format validation selectively**: Only use `validate_formats: true` when needed  
+5. **Use `valid?/2` for boolean checks**: Faster than `validate/2` when you don't need error details
+
+### Configuration Profiles
+
+Choose the profile that best matches your use case:
+
+| Profile | Use Case | Output | Format Validation | Annotations |
+|---------|----------|--------|------------------|-------------|
+| `:strict` | APIs, compliance | `:verbose` | ✅ Enabled | ✅ Collected |
+| `:lenient` | Forms, UX | `:detailed` | ❌ Disabled | ✅ Collected |
+| `:performance` | High-volume | `:basic` | ❌ Disabled | ❌ Disabled |
+
+```elixir
+# Compare profile differences
+ExJsonschema.Profile.compare(:strict, :performance)
+# => %{
+#      validate_formats: {true, false},
+#      output_format: {:verbose, :basic},
+#      collect_annotations: {true, false},
+#      ...
+#    }
+```
 
 ## 🤝 JSON Schema Support
 

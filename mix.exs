@@ -85,7 +85,8 @@ defmodule ExJsonschema.MixProject do
     [
       extras: [
         "README.md": [title: "Overview"],
-        "CHANGELOG.md": [title: "Changelog"]
+        "CHANGELOG.md": [title: "Changelog"],
+        "LICENSE": [title: "License"]
       ],
       main: "readme",
       source_ref: "v#{@version}",
@@ -93,8 +94,10 @@ defmodule ExJsonschema.MixProject do
       formatters: ["html"],
       groups_for_modules: [
         Core: [ExJsonschema],
+        Configuration: [ExJsonschema.Options, ExJsonschema.Profile],
         Errors: [ExJsonschema.ValidationError, ExJsonschema.CompilationError],
-        Internal: [ExJsonschema.Native]
+        Behaviors: [ExJsonschema.Cache, ExJsonschema.Retriever, ExJsonschema.ReferenceCache],
+        Internal: [ExJsonschema.Native, ExJsonschema.DraftDetector]
       ]
     ]
   end

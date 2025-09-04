@@ -93,6 +93,31 @@ defmodule ExJsonschema do
       # Quick validation with options
       ExJsonschema.valid?(validator, json, validate_formats: true)
 
+  ## Configuration Profiles
+
+  ExJsonschema includes three predefined profiles optimized for common use cases:
+
+      # Strict validation for APIs and compliance
+      strict_opts = ExJsonschema.Options.new(:strict)
+      {:ok, validator} = ExJsonschema.compile(schema, strict_opts)
+      
+      # Lenient validation for user forms
+      lenient_opts = ExJsonschema.Options.new(:lenient)
+      ExJsonschema.validate(validator, user_data, lenient_opts)
+      
+      # Performance-optimized for high-volume processing
+      perf_opts = ExJsonschema.Options.new(:performance)
+      is_valid = ExJsonschema.valid?(validator, data, perf_opts)
+      
+      # Customize any profile with overrides
+      custom = ExJsonschema.Options.new({:strict, [output_format: :basic]})
+
+  Profiles can also be accessed through the Profile module:
+
+      ExJsonschema.Profile.strict(validate_formats: true)
+      ExJsonschema.Profile.lenient(draft: :draft7)
+      ExJsonschema.Profile.performance(output_format: :detailed)
+
   ## Features
 
   - High-performance validation using Rust (1.4M-1.9M validations/second)

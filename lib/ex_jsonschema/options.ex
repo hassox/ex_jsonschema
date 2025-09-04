@@ -149,9 +149,51 @@ defmodule ExJsonschema.Options do
       iex> opts = ExJsonschema.Options.new(draft: :draft202012, validate_formats: true)
       iex> {opts.draft, opts.validate_formats}
       {:draft202012, true}
+      
+  ## Profile Integration
+  
+  You can also create Options from predefined profiles:
+  
+      iex> opts = ExJsonschema.Options.new(:strict)
+      iex> opts.validate_formats
+      true
+      
+      iex> opts = ExJsonschema.Options.new({:performance, [output_format: :detailed]})
+      iex> {opts.output_format, opts.collect_annotations}
+      {:detailed, false}
   """
-  def new(overrides \\ []) do
+  def new(profile_or_overrides \\ [])
+  
+  def new(profile) when profile in [:strict, :lenient, :performance] do
+    ExJsonschema.Profile.get(profile)
+  end
+  
+  def new({profile, overrides}) when profile in [:strict, :lenient, :performance] and is_list(overrides) do
+    ExJsonschema.Profile.get(profile, overrides)
+  end
+  
+  def new(overrides) when is_list(overrides) do
     struct(__MODULE__, overrides)
+  end
+
+  @doc """
+  Creates options from a profile with optional overrides.
+  
+  This is a convenience function that's equivalent to `ExJsonschema.Profile.get/2`
+  but provides a consistent API within the Options module.
+  
+  ## Examples
+  
+      iex> opts = ExJsonschema.Options.profile(:strict)
+      iex> opts.validate_formats
+      true
+      
+      iex> opts = ExJsonschema.Options.profile(:performance, output_format: :detailed)
+      iex> {opts.output_format, opts.collect_annotations}
+      {:detailed, false}
+  """
+  def profile(profile_name, overrides \\ []) do
+    ExJsonschema.Profile.get(profile_name, overrides)
   end
 
   @doc """

@@ -219,4 +219,51 @@ defmodule ExJsonschema.OptionsTest do
       assert opts.reference_cache == nil
     end
   end
+
+  describe "profile integration" do
+    test "new/1 with profile atom creates profile options" do
+      strict_opts = Options.new(:strict)
+      assert strict_opts.validate_formats == true
+      assert strict_opts.output_format == :verbose
+      
+      lenient_opts = Options.new(:lenient)
+      assert lenient_opts.validate_formats == false
+      assert lenient_opts.output_format == :detailed
+      
+      perf_opts = Options.new(:performance)
+      assert perf_opts.collect_annotations == false
+      assert perf_opts.output_format == :basic
+    end
+    
+    test "new/1 with {profile, overrides} tuple creates customized profile" do
+      opts = Options.new({:strict, [output_format: :basic]})
+      
+      # Override applied
+      assert opts.output_format == :basic
+      # Strict character maintained
+      assert opts.validate_formats == true
+      assert opts.ignore_unknown_formats == false
+    end
+    
+    test "profile/2 creates profile options with overrides" do
+      opts = Options.profile(:performance, validate_formats: true)
+      
+      # Override applied
+      assert opts.validate_formats == true
+      # Performance character maintained
+      assert opts.collect_annotations == false
+      assert opts.stop_on_first_error == true
+    end
+    
+    test "profile/1 creates profile options without overrides" do
+      strict_opts = Options.profile(:strict)
+      lenient_opts = Options.profile(:lenient)  
+      perf_opts = Options.profile(:performance)
+      
+      # Should match direct profile creation
+      assert strict_opts == ExJsonschema.Profile.strict()
+      assert lenient_opts == ExJsonschema.Profile.lenient()
+      assert perf_opts == ExJsonschema.Profile.performance()
+    end
+  end
 end

@@ -65,10 +65,18 @@ defmodule ExJsonschema do
       #       instance_value: 15,
       #       schema_value: 18,
       #       context: %{
-      #         "expected" => "value >= minimum",
+      #         "instance_path" => "/age",
+      #         "schema_path" => "/properties/age/minimum",
+      #         "minimum_value" => 18,
+      #         "actual_value" => 15,
+      #         "expected" => "value >= 18",
       #         "actual" => 15
       #       },
-      #       suggestions: ["Ensure the value meets the minimum requirement"]
+      #       annotations: %{
+      #         "error_keyword" => "minimum",
+      #         "validation_failed_at" => "/age"
+      #       },
+      #       suggestions: ["Value must be >= 18"]
       #     }
       #   ]}
 

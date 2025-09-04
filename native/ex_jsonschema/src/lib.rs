@@ -55,6 +55,7 @@ pub struct VerboseValidationErrorDetail {
 
 pub struct CompiledSchema {
     validator: AssertUnwindSafe<jsonschema::Validator>,
+    schema: Value,
 }
 
 impl CompiledSchema {
@@ -64,6 +65,7 @@ impl CompiledSchema {
 
         Ok(CompiledSchema {
             validator: AssertUnwindSafe(validator),
+            schema: schema.clone(),
         })
     }
 
@@ -92,10 +94,10 @@ impl CompiledSchema {
                 .iter_errors(instance)
                 .map(|error| {
                     let keyword = extract_keyword_from_error(&error);
-                    let (instance_value, schema_value) = extract_values_from_error(&error, instance);
-                    let context = build_error_context(&error, &instance_value, &schema_value);
-                    let annotations = extract_annotations_from_error(&error);
-                    let suggestions = generate_suggestions_for_error(&error, &keyword);
+                    let (instance_value, schema_value) = extract_values_from_error(&error, instance, &self.schema);
+                    let context = build_error_context(&error, &instance_value, &schema_value, &keyword);
+                    let annotations = extract_annotations_from_error(&error, &self.schema);
+                    let suggestions = generate_suggestions_for_error(&error, &keyword, &instance_value, &schema_value);
 
                     VerboseValidationErrorDetail {
                         instance_path: error.instance_path.to_string(),
@@ -386,22 +388,74 @@ fn extract_keyword_from_error(error: &jsonschema::ValidationError) -> String {
             "required" => "required".to_string(),
             "minItems" => "minItems".to_string(),
             "maxItems" => "maxItems".to_string(),
-            _ => "unknown".to_string(),
+            "enum" => "enum".to_string(),
+            "const" => "const".to_string(),
+            "uniqueItems" => "uniqueItems".to_string(),
+            "multipleOf" => "multipleOf".to_string(),
+            _ => last_segment.to_string(), // Return the actual keyword instead of "unknown"
         }
     } else {
         "unknown".to_string()
     }
 }
 
-fn extract_values_from_error(error: &jsonschema::ValidationError, instance: &Value) -> (Value, Value) {
+fn extract_values_from_error(error: &jsonschema::ValidationError, instance: &Value, schema: &Value) -> (Value, Value) {
     // Get the instance value at the error path
     let instance_value = get_value_at_path(instance, &error.instance_path.to_string())
         .unwrap_or(Value::Null);
     
-    // For schema value, we'd need to navigate the schema, but for now return a placeholder
-    let schema_value = Value::String("schema_constraint".to_string());
+    // Extract schema constraint value based on the keyword
+    let schema_value = get_schema_constraint_value(error, schema);
     
     (instance_value, schema_value)
+}
+
+fn get_schema_constraint_value(error: &jsonschema::ValidationError, schema: &Value) -> Value {
+    let schema_path = error.schema_path.to_string();
+    let keyword = extract_keyword_from_error(error);
+    
+    // Navigate to the schema location where the constraint is defined
+    if let Some(schema_location) = get_value_at_path(schema, &schema_path) {
+        // For simple constraints, return the constraint value directly
+        match keyword.as_str() {
+            "minimum" | "maximum" | "minLength" | "maxLength" | "minItems" | "maxItems" | "const" | "enum" | "multipleOf" => {
+                schema_location.clone()
+            }
+            "type" => {
+                // Navigate up one level to get the type constraint
+                let parent_path = schema_path.rsplitn(2, '/').nth(1).unwrap_or("");
+                if let Some(parent) = get_value_at_path(schema, parent_path) {
+                    if let Some(type_val) = parent.get("type") {
+                        return type_val.clone();
+                    }
+                }
+                Value::String("unknown".to_string())
+            }
+            "pattern" => {
+                // Navigate up to get the pattern value
+                let parent_path = schema_path.rsplitn(2, '/').nth(1).unwrap_or("");
+                if let Some(parent) = get_value_at_path(schema, parent_path) {
+                    if let Some(pattern_val) = parent.get("pattern") {
+                        return pattern_val.clone();
+                    }
+                }
+                Value::String("unknown pattern".to_string())
+            }
+            "required" => {
+                // Get the required property list
+                let parent_path = schema_path.rsplitn(2, '/').nth(1).unwrap_or("");
+                if let Some(parent) = get_value_at_path(schema, parent_path) {
+                    if let Some(required_val) = parent.get("required") {
+                        return required_val.clone();
+                    }
+                }
+                Value::Array(vec![])
+            }
+            _ => Value::String(format!("constraint: {}", keyword))
+        }
+    } else {
+        Value::String("unknown constraint".to_string())
+    }
 }
 
 fn get_value_at_path(value: &Value, path: &str) -> Option<Value> {
@@ -434,16 +488,20 @@ fn get_value_at_path(value: &Value, path: &str) -> Option<Value> {
 fn build_error_context(
     error: &jsonschema::ValidationError,
     instance_value: &Value,
-    _schema_value: &Value,
+    schema_value: &Value,
+    keyword: &str,
 ) -> HashMap<String, Value> {
     let mut context = HashMap::new();
     
+    // Add instance path and schema path for reference
+    context.insert("instance_path".to_string(), Value::String(error.instance_path.to_string()));
+    context.insert("schema_path".to_string(), Value::String(error.schema_path.to_string()));
+    
     // Add expected and actual values based on error type
-    let keyword = extract_keyword_from_error(error);
-    match keyword.as_str() {
+    match keyword {
         "type" => {
-            context.insert("expected".to_string(), Value::String("correct type".to_string()));
-            context.insert("actual".to_string(), Value::String(format!("type: {}", 
+            context.insert("expected_type".to_string(), schema_value.clone());
+            context.insert("actual_type".to_string(), Value::String(
                 match instance_value {
                     Value::String(_) => "string",
                     Value::Number(_) => "number", 
@@ -451,21 +509,64 @@ fn build_error_context(
                     Value::Array(_) => "array",
                     Value::Object(_) => "object",
                     Value::Null => "null",
-                }
-            )));
+                }.to_string()
+            ));
+            context.insert("expected".to_string(), Value::String(format!("type: {}", schema_value)));
+            context.insert("actual".to_string(), instance_value.clone());
         }
         "minimum" => {
-            context.insert("expected".to_string(), Value::String("value >= minimum".to_string()));
+            context.insert("minimum_value".to_string(), schema_value.clone());
+            context.insert("actual_value".to_string(), instance_value.clone());
+            context.insert("expected".to_string(), Value::String(format!("value >= {}", schema_value)));
+            context.insert("actual".to_string(), instance_value.clone());
+        }
+        "maximum" => {
+            context.insert("maximum_value".to_string(), schema_value.clone());
+            context.insert("actual_value".to_string(), instance_value.clone());
+            context.insert("expected".to_string(), Value::String(format!("value <= {}", schema_value)));
             context.insert("actual".to_string(), instance_value.clone());
         }
         "minLength" => {
-            let length = if let Value::String(s) = instance_value {
+            let actual_length = if let Value::String(s) = instance_value {
                 s.len()
             } else { 0 };
-            context.insert("expected".to_string(), Value::String("length >= minimum".to_string()));
-            context.insert("actual".to_string(), Value::String(format!("length: {}", length)));
+            context.insert("minimum_length".to_string(), schema_value.clone());
+            context.insert("actual_length".to_string(), Value::Number(actual_length.into()));
+            context.insert("expected".to_string(), Value::String(format!("length >= {}", schema_value)));
+            context.insert("actual".to_string(), Value::String(format!("length: {}", actual_length)));
+        }
+        "maxLength" => {
+            let actual_length = if let Value::String(s) = instance_value {
+                s.len()
+            } else { 0 };
+            context.insert("maximum_length".to_string(), schema_value.clone());
+            context.insert("actual_length".to_string(), Value::Number(actual_length.into()));
+            context.insert("expected".to_string(), Value::String(format!("length <= {}", schema_value)));
+            context.insert("actual".to_string(), Value::String(format!("length: {}", actual_length)));
+        }
+        "pattern" => {
+            context.insert("pattern".to_string(), schema_value.clone());
+            context.insert("value".to_string(), instance_value.clone());
+            context.insert("expected".to_string(), Value::String(format!("match pattern: {}", schema_value)));
+            context.insert("actual".to_string(), instance_value.clone());
+        }
+        "required" => {
+            context.insert("required_properties".to_string(), schema_value.clone());
+            context.insert("expected".to_string(), Value::String("all required properties present".to_string()));
+            context.insert("actual".to_string(), Value::String("missing required property".to_string()));
+        }
+        "minItems" | "maxItems" => {
+            let actual_length = if let Value::Array(arr) = instance_value {
+                arr.len()
+            } else { 0 };
+            context.insert(format!("{}_items", if keyword == "minItems" { "minimum" } else { "maximum" }).to_string(), schema_value.clone());
+            context.insert("actual_items".to_string(), Value::Number(actual_length.into()));
+            let op = if keyword == "minItems" { ">=" } else { "<=" };
+            context.insert("expected".to_string(), Value::String(format!("items {} {}", op, schema_value)));
+            context.insert("actual".to_string(), instance_value.clone()); // Use actual array value
         }
         _ => {
+            context.insert("constraint".to_string(), schema_value.clone());
             context.insert("expected".to_string(), Value::String("constraint satisfied".to_string()));
             context.insert("actual".to_string(), instance_value.clone());
         }
@@ -474,31 +575,109 @@ fn build_error_context(
     context
 }
 
-fn extract_annotations_from_error(_error: &jsonschema::ValidationError) -> HashMap<String, Value> {
-    // For M2.1, return empty annotations - full implementation would extract schema annotations
-    HashMap::new()
+fn extract_annotations_from_error(error: &jsonschema::ValidationError, schema: &Value) -> HashMap<String, Value> {
+    let mut annotations = HashMap::new();
+    
+    // Get the schema location where the error occurred
+    let schema_path = error.schema_path.to_string();
+    if let Some(schema_location) = get_value_at_path(schema, &schema_path) {
+        // Extract common annotations that might be present
+        if let Value::Object(schema_obj) = schema_location {
+            // Add title annotation if present
+            if let Some(title) = schema_obj.get("title") {
+                annotations.insert("title".to_string(), title.clone());
+            }
+            
+            // Add description annotation if present  
+            if let Some(description) = schema_obj.get("description") {
+                annotations.insert("description".to_string(), description.clone());
+            }
+            
+            // Add examples if present
+            if let Some(examples) = schema_obj.get("examples") {
+                annotations.insert("examples".to_string(), examples.clone());
+            }
+            
+            // Add default value if present
+            if let Some(default) = schema_obj.get("default") {
+                annotations.insert("default".to_string(), default.clone());
+            }
+        }
+    }
+    
+    // For parent schema annotations, check one level up
+    let parent_path = schema_path.rsplitn(2, '/').nth(1).unwrap_or("");
+    if !parent_path.is_empty() {
+        if let Some(parent_location) = get_value_at_path(schema, parent_path) {
+            if let Value::Object(parent_obj) = parent_location {
+                // Add parent title/description with "parent_" prefix
+                if let Some(parent_title) = parent_obj.get("title") {
+                    annotations.insert("parent_title".to_string(), parent_title.clone());
+                }
+                if let Some(parent_description) = parent_obj.get("description") {
+                    annotations.insert("parent_description".to_string(), parent_description.clone());
+                }
+            }
+        }
+    }
+    
+    // Add error location metadata
+    annotations.insert("error_keyword".to_string(), Value::String(extract_keyword_from_error(error)));
+    annotations.insert("validation_failed_at".to_string(), Value::String(error.instance_path.to_string()));
+    
+    annotations
 }
 
-fn generate_suggestions_for_error(error: &jsonschema::ValidationError, keyword: &str) -> Vec<String> {
+fn generate_suggestions_for_error(
+    error: &jsonschema::ValidationError, 
+    keyword: &str, 
+    _instance_value: &Value, 
+    schema_value: &Value
+) -> Vec<String> {
     match keyword {
-        "type" => vec!["Check the data type of the value".to_string()],
-        "minimum" => vec!["Ensure the value meets the minimum requirement".to_string()],
-        "maximum" => vec!["Ensure the value does not exceed the maximum".to_string()],
-        "minLength" => vec!["Ensure the string meets the minimum length requirement".to_string()],
-        "maxLength" => vec!["Ensure the string does not exceed the maximum length".to_string()],
-        "pattern" => vec!["Check that the string matches the required pattern".to_string()],
+        "type" => {
+            let expected = schema_value.as_str().unwrap_or("unknown");
+            vec![format!("Expected type: {}", expected)]
+        }
+        "minimum" => vec![format!("Value must be >= {}", schema_value)],
+        "maximum" => vec![format!("Value must be <= {}", schema_value)],
+        "minLength" => vec![format!("String must be at least {} characters", schema_value)],
+        "maxLength" => vec![format!("String must be at most {} characters", schema_value)],
+        "pattern" => vec![format!("String must match pattern: {}", schema_value)],
         "format" => {
             let message = error.to_string();
             if message.contains("email") {
-                vec!["Check email format: should contain @ and valid domain".to_string()]
+                vec!["Use valid email format: user@domain.com".to_string()]
             } else {
-                vec!["Check the format of the value".to_string()]
+                vec!["Check the format requirements".to_string()]
             }
         }
-        "required" => vec!["Add the required property to the object".to_string()],
-        "minItems" => vec!["Add more items to meet the minimum requirement".to_string()],
-        "maxItems" => vec!["Remove items to not exceed the maximum".to_string()],
-        _ => vec![],
+        "required" => vec!["Add the missing required property".to_string()],
+        "minItems" => vec![format!("Array must have at least {} items", schema_value)],
+        "maxItems" => vec![format!("Array must have at most {} items", schema_value)],
+        "enum" => vec![format!("Value must be one of: {}", schema_value)],
+        "const" => vec![format!("Value must be exactly: {}", schema_value)],
+        "uniqueItems" => vec!["Array items must be unique".to_string()],
+        "multipleOf" => vec![format!("Value must be a multiple of {}", schema_value)],
+        _ => {
+            // Provide helpful default suggestions for unhandled keywords
+            let mut suggestions = vec![
+                format!("Validation failed for '{}' constraint", keyword),
+                format!("Expected: {}", schema_value),
+            ];
+            
+            // Add generic troubleshooting advice
+            suggestions.push("Check the schema documentation for this constraint".to_string());
+            suggestions.push("Verify your data matches the expected format".to_string());
+            
+            // If we can extract useful info from the error message, add it
+            let message = error.to_string();
+            if !message.is_empty() && message.len() < 200 {
+                suggestions.push(format!("Error details: {}", message));
+            }
+            
+            suggestions
+        }
     }
 }
 

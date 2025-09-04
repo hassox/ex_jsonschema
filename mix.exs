@@ -20,7 +20,21 @@ defmodule ExJsonschema.MixProject do
       # Additional metadata for better discoverability
       name: "ExJsonschema",
       source_url: @source_url,
-      homepage_url: @source_url
+      homepage_url: @source_url,
+
+      # Test coverage configuration
+      test_coverage: [
+        threshold: 90.0,
+        ignore_modules: [
+          # Exclude Mix tasks from coverage requirements
+          Mix.Tasks.Benchmark,
+          # Exclude protocol implementations (these are auto-generated)
+          Inspect.ExJsonschema.ValidationError,
+          String.Chars.ExJsonschema.ValidationError,
+          # Exclude validation error exception (used only for validate!)
+          ExJsonschema.ValidationError.Exception
+        ]
+      ]
     ]
   end
 

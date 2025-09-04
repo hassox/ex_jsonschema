@@ -2,9 +2,9 @@
 
 ## 📊 Current Status: M2.4 COMPLETE - Validation Options Passing Ready
 
-**Overall Progress**: 5/7 M2 tasks complete (71.4% of M2)  
-**Phase**: 🟡 M2 Enhanced Core Validation IN PROGRESS  
-**Next Action**: Continue with M2.6 Documentation and M2.7 Test Coverage
+**Overall Progress**: 6/7 M2 tasks complete (85.7% of M2)  
+**Phase**: 🟡 M2 Enhanced Core Validation NEARLY COMPLETE  
+**Next Action**: Complete M2.7 Test Coverage to finish M2 milestone
 
 ---
 
@@ -13,7 +13,7 @@
 | Milestone | Status | Progress | Due Date | Notes |
 |-----------|--------|----------|----------|-------|
 | **M1: Foundation** | 🟢 Complete | 6/6 tasks | Month 1 | ALL TASKS COMPLETE |
-| **M2: Core Validation** | 🟡 In Progress | 5/7 tasks | Month 2 | M2.1-M2.5 Complete |
+| **M2: Core Validation** | 🟡 In Progress | 6/7 tasks | Month 2 | M2.1-M2.6 Complete |
 | **M3: Config/Errors** | ⚪ Not Started | 0/6 tasks | Month 3 | Blocked by M2 |
 | **M4: Schema Mgmt** | ⚪ Not Started | 0/6 tasks | Month 4 | Blocked by M3 |
 | **M5: References** | ⚪ Not Started | 0/7 tasks | Month 5-6 | Blocked by M4 |
@@ -138,6 +138,14 @@ None - M1.1 complete, ready for next tasks
     - 12 dedicated tests covering all validation option scenarios
     - API-level implementation ready for future Rust NIF integration
   - **M2.5**: Performance benchmarking utilities via `mix benchmark` task
+- [x] **M2.6 Complete**: Documentation and examples updated
+  - Updated README with M2.4 validation options features and streamlined content
+  - Enhanced @moduledoc with comprehensive validation options examples
+  - Added @typedoc annotations for all public types with detailed descriptions
+  - Updated API reference to focus on essentials, directing to HexDocs for details
+  - Enhanced performance section with benchmarking examples and performance tips
+  - All documentation generates successfully with ExDoc
+  - Documentation follows "details closest to source" principle
 
 ### Key Accomplishments
 - ✅ Comprehensive upgrade plan created (8 functional surfaces)

@@ -28,8 +28,45 @@ defmodule ExJsonschema.Options do
       )
   """
 
+  @typedoc """
+  JSON Schema draft version specification.
+
+  - `:auto` - Automatically detect draft from schema's `$schema` property
+  - `:draft4` - JSON Schema Draft 4 (2013)
+  - `:draft6` - JSON Schema Draft 6 (2017) 
+  - `:draft7` - JSON Schema Draft 7 (2019)
+  - `:draft201909` - JSON Schema 2019-09
+  - `:draft202012` - JSON Schema 2020-12 (latest)
+
+  When `:auto` is used, the library examines the `$schema` property
+  to determine the appropriate draft version. Defaults to `:draft202012`
+  if no `$schema` is found.
+  """
   @type draft :: :auto | :draft4 | :draft6 | :draft7 | :draft201909 | :draft202012
+
+  @typedoc """
+  Regular expression engine used for pattern validation.
+
+  - `:fancy_regex` - Full-featured regex engine with advanced features (default)
+  - `:regex` - Simpler, faster regex engine for basic patterns
+
+  The `:fancy_regex` engine supports advanced features like lookahead/lookbehind
+  while `:regex` provides better performance for simple pattern matching.
+  """
   @type regex_engine :: :fancy_regex | :regex
+
+  @typedoc """
+  Output format for validation results.
+
+  - `:flag` - Simple boolean result (fastest)
+  - `:basic` - `:ok` or `{:error, :validation_failed}` 
+  - `:detailed` - Structured error information with paths and messages (default)
+  - `:verbose` - Comprehensive error details with context, values, and suggestions
+
+  Use `:basic` for maximum performance when you only need pass/fail results.
+  Use `:detailed` for structured error handling. Use `:verbose` for debugging
+  and user-friendly error reporting.
+  """
   @type output_format :: :flag | :basic | :detailed | :verbose
   
   defstruct [

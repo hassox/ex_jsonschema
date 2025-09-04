@@ -72,13 +72,36 @@ defmodule ExJsonschema do
       #     }
       #   ]}
 
+  ## Validation Options
+
+  ExJsonschema supports configurable validation options:
+
+      # Enable format validation
+      ExJsonschema.validate(validator, json, validate_formats: true)
+      
+      # Stop on first error for faster validation
+      ExJsonschema.validate(validator, json, stop_on_first_error: true)
+      
+      # Use Options struct for reusable configuration
+      opts = ExJsonschema.Options.new(
+        output_format: :verbose,
+        validate_formats: true,
+        stop_on_first_error: false
+      )
+      ExJsonschema.validate(validator, json, opts)
+
+      # Quick validation with options
+      ExJsonschema.valid?(validator, json, validate_formats: true)
+
   ## Features
 
-  - Fast validation using Rust (2M+ validations/second)
+  - High-performance validation using Rust (1.4M-1.9M validations/second)
   - Support for JSON Schema draft-07, draft 2019-09, and draft 2020-12
-  - Multiple output formats for different use cases
-  - Detailed error messages with path information
-  - Comprehensive error context in verbose mode
+  - Multiple output formats: basic (fastest), detailed (default), verbose (comprehensive)
+  - Configurable validation options for format validation, error handling, and annotations
+  - Both keyword list and Options struct interfaces
+  - Detailed error messages with path information and suggestions
+  - Built-in performance benchmarking via `mix benchmark`
   - Precompiled binaries for easy installation
   - Zero Rust toolchain required for end users
 
@@ -86,9 +109,56 @@ defmodule ExJsonschema do
 
   alias ExJsonschema.{CompilationError, DraftDetector, Native, Options, ValidationError}
 
+  @typedoc """
+  A compiled JSON Schema validator optimized for repeated use.
+
+  This is an opaque reference to a compiled schema stored in the Rust NIF.
+  Compile once with `compile/1` or `compile/2`, then use multiple times 
+  with `validate/2`, `validate/3`, or `valid?/2`, `valid?/3`.
+
+  ## Performance Note
+  Compiled schemas are significantly faster than one-shot validation
+  when validating multiple instances against the same schema.
+  """
   @type compiled_schema :: reference()
+
+  @typedoc """
+  A JSON document represented as a string.
+
+  Must be valid JSON syntax. Both the schema and instance documents
+  are expected to be JSON strings that will be parsed by the Rust NIF.
+
+  ## Examples
+      "{\\"type\\": \\"string\\"}"
+      "{\\"name\\": \\"John\\", \\"age\\": 30}"
+      "[\\"item1\\", \\"item2\\", \\"item3\\"]"
+  """
   @type json_string :: String.t()
+
+  @typedoc """
+  Result of validation operations.
+
+  - `:ok` - Validation succeeded, the instance is valid
+  - `{:error, [ValidationError.t()]}` - Validation failed with detailed error information
+
+  The error list contains structured error information including:
+  - Instance path (where the error occurred)  
+  - Schema path (which schema rule failed)
+  - Descriptive error message
+  - Additional context in verbose mode
+  """
   @type validation_result :: :ok | {:error, [ValidationError.t()]}
+
+  @typedoc """
+  Result of basic validation operations.
+
+  - `:ok` - Validation succeeded
+  - `{:error, :validation_failed}` - Validation failed (no detailed errors)
+
+  This is returned by validation with `output: :basic` for fastest performance
+  when you only need to know if validation passed or failed.
+  """
+  @type basic_validation_result :: :ok | {:error, :validation_failed}
 
   @doc """
   Compiles a JSON Schema string into an optimized validator.
@@ -233,7 +303,7 @@ defmodule ExJsonschema do
       {:error, [%ExJsonschema.ValidationError{}]}
 
   """
-  @spec validate(compiled_schema(), json_string(), keyword() | Options.t()) :: validation_result() | {:error, :validation_failed}
+  @spec validate(compiled_schema(), json_string(), keyword() | Options.t()) :: validation_result() | basic_validation_result()
   
   # Accept Options struct
   def validate(compiled_schema, instance_json, %Options{} = options)

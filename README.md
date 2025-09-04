@@ -6,12 +6,14 @@ ExJsonschema is a fast, safe, and spec-compliant JSON Schema validator for Elixi
 
 ## ✨ Features
 
-- **🔥 High Performance**: Rust-powered validation with zero-copy JSON processing
+- **🔥 High Performance**: Rust-powered validation with zero-copy JSON processing (3M+ validations/second)
 - **🛡️ Memory Safe**: No risk of crashing the BEAM VM - all Rust panics are caught
 - **📋 Spec Compliant**: Supports JSON Schema draft-07, draft 2019-09, and draft 2020-12
-- **🔍 Detailed Errors**: Rich error messages with path information and validation context
+- **🔍 Rich Error Formats**: Multiple output formats - basic (fastest), detailed (default), verbose (comprehensive)
+- **⚙️ Flexible Validation**: Configurable options for format validation, error handling, and annotations
+- **📊 Performance Monitoring**: Built-in benchmarking tools via `mix benchmark`
 - **📦 Zero Dependencies**: Precompiled NIFs mean no Rust toolchain required for end users
-- **🎯 Idiomatic Elixir**: Clean, functional API that feels natural in Elixir
+- **🎯 Idiomatic Elixir**: Clean, functional API with Options structs and keyword lists
 
 ## 📋 Installation
 
@@ -58,6 +60,22 @@ end)
 # ❌ -5 is less than the minimum of 0 at /age
 ```
 
+## 🎛️ Advanced Features
+
+ExJsonschema supports multiple output formats and validation options. See the [API documentation](https://hexdocs.pm/ex_jsonschema) for comprehensive details.
+
+```elixir
+# Multiple output formats
+ExJsonschema.validate(validator, json, output: :verbose)
+
+# Validation options
+ExJsonschema.validate(validator, json, validate_formats: true)
+
+# Options struct for reusable configuration  
+opts = ExJsonschema.Options.new(validate_formats: true)
+ExJsonschema.validate(validator, json, opts)
+```
+
 ## 📖 API Reference
 
 ### Schema Compilation
@@ -81,7 +99,7 @@ compiled = ExJsonschema.compile!(schema_json)
 ### Validation
 
 ```elixir
-# Full validation with detailed errors
+# Full validation with detailed errors (default)
 case ExJsonschema.validate(compiled, json) do
   :ok -> 
     IO.puts("Valid!")
@@ -94,12 +112,14 @@ if ExJsonschema.valid?(compiled, json) do
   IO.puts("Valid!")
 end
 
+# Validation with options
+ExJsonschema.validate(compiled, json, validate_formats: true)
+
 # One-shot validation (compile + validate)
 ExJsonschema.validate_once(schema_json, instance_json)
-
-# Validation with exceptions
-ExJsonschema.validate!(compiled, json)
 ```
+
+For comprehensive validation options, output formats, and detailed examples, see the [full API documentation](https://hexdocs.pm/ex_jsonschema).
 
 ## 🔍 Enhanced Error Handling
 
@@ -175,6 +195,31 @@ ExJsonschema is designed for high-performance applications:
 - **Zero-copy**: Direct validation of JSON strings without intermediate parsing
 - **Rust performance**: Orders of magnitude faster than pure Elixir implementations
 - **Memory efficient**: Minimal memory allocation during validation
+- **Benchmarked**: 3M+ validations/second across all output formats
+
+### Performance Benchmarking
+
+Run the built-in benchmarking suite to measure performance on your system:
+
+```bash
+# Run all benchmarks
+mix benchmark
+
+# Benchmark specific output format
+mix benchmark --format basic
+mix benchmark --format detailed  
+mix benchmark --format verbose
+
+# Custom iteration count
+mix benchmark --iterations 5000
+```
+
+### Performance Tips
+
+1. **Compile once, validate many**: Compiled schemas are significantly faster for repeated validation
+2. **Choose the right output format**: Use `:basic` for maximum speed when you only need pass/fail
+3. **Enable format validation selectively**: Only use `validate_formats: true` when needed
+4. **Use `valid?/2` for boolean checks**: Faster than `validate/2` when you don't need error details
 
 ## 🤝 JSON Schema Support
 

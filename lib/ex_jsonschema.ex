@@ -208,7 +208,7 @@ defmodule ExJsonschema do
 
   """
 
-  alias ExJsonschema.{CompilationError, DraftDetector, ErrorFormatter, Native, Options, ValidationError}
+  alias ExJsonschema.{CompilationError, DraftDetector, ErrorAnalyzer, ErrorFormatter, Native, Options, ValidationError}
 
   @typedoc """
   A compiled JSON Schema validator optimized for repeated use.
@@ -595,6 +595,43 @@ defmodule ExJsonschema do
   @spec format_errors([ValidationError.t()], ErrorFormatter.format(), ErrorFormatter.format_options()) :: String.t()
   def format_errors(errors, format, options \\ []) do
     ErrorFormatter.format(errors, format, options)
+  end
+
+  @doc """
+  Analyzes validation errors to provide insights, categorization, and recommendations.
+  
+  Returns a comprehensive analysis including error categories, severity levels,
+  detected patterns, and actionable recommendations for fixing the issues.
+  
+  ## Examples
+  
+      {:error, errors} = ExJsonschema.validate(validator, invalid_json)
+      analysis = ExJsonschema.analyze_errors(errors)
+      
+      analysis.total_errors
+      #=> 3
+      
+      analysis.categories
+      #=> %{type_mismatch: 1, constraint_violation: 2}
+      
+      analysis.recommendations
+      #=> ["Review required fields - ensure all mandatory properties are included", ...]
+      
+      # Get human-readable summary
+      ExJsonschema.analyze_errors(errors, :summary)
+      #=> "3 validation errors detected\\n\\nCategories: 1 type mismatches, 2 constraint violations..."
+  
+  """
+  @spec analyze_errors([ValidationError.t()]) :: ErrorAnalyzer.error_analysis()
+  @spec analyze_errors([ValidationError.t()], :summary) :: String.t()
+  def analyze_errors(errors, format \\ :analysis)
+  
+  def analyze_errors(errors, :analysis) when is_list(errors) do
+    ErrorAnalyzer.analyze(errors)
+  end
+  
+  def analyze_errors(errors, :summary) when is_list(errors) do
+    ErrorAnalyzer.summarize(errors)
   end
 
   # Private helper functions for validation options

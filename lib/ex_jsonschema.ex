@@ -51,6 +51,27 @@ defmodule ExJsonschema do
   """
   @spec compile(json_string()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
   def compile(schema_json) when is_binary(schema_json) do
+    compile(schema_json, [])
+  end
+
+  @doc """
+  Compiles a JSON Schema string with options into an optimized validator.
+
+  ## Options
+
+  Currently options are accepted but ignored for forward compatibility.
+  Future versions will support configuration options.
+
+  ## Examples
+
+      iex> schema = ~s({"type": "string"})
+      iex> {:ok, compiled} = ExJsonschema.compile(schema, [])
+      iex> is_reference(compiled)
+      true
+
+  """
+  @spec compile(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  def compile(schema_json, _options) when is_binary(schema_json) do
     case Native.compile_schema(schema_json) do
       {:ok, compiled} -> {:ok, compiled}
       {:error, error_map} -> {:error, CompilationError.from_map(error_map)}

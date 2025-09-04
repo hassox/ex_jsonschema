@@ -38,7 +38,8 @@ defmodule ExJsonschema.MixProject do
       {:rustler_precompiled, "~> 0.8"},
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:stream_data, "~> 1.0", only: :test}
     ]
   end
 

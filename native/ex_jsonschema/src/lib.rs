@@ -47,19 +47,19 @@ impl CompiledSchema {
     }
 
     fn validate(&self, instance: &Value) -> Result<(), JsonSchemaError> {
-        match self.validator.validate(instance) {
-            Ok(_) => Ok(()),
-            Err(errors) => {
-                let error_details: Vec<ValidationErrorDetail> = errors
-                    .map(|error| ValidationErrorDetail {
-                        instance_path: error.instance_path.to_string(),
-                        schema_path: error.schema_path.to_string(),
-                        message: error.to_string(),
-                    })
-                    .collect();
+        if self.validator.is_valid(instance) {
+            Ok(())
+        } else {
+            let error_details: Vec<ValidationErrorDetail> = self.validator
+                .iter_errors(instance)
+                .map(|error| ValidationErrorDetail {
+                    instance_path: error.instance_path.to_string(),
+                    schema_path: error.schema_path.to_string(),
+                    message: error.to_string(),
+                })
+                .collect();
 
-                Err(JsonSchemaError::ValidationError(error_details))
-            }
+            Err(JsonSchemaError::ValidationError(error_details))
         }
     }
 

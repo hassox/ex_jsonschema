@@ -36,6 +36,7 @@ defmodule ExJsonschema.Native do
   # Validation  
   def validate(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)
   def validate_detailed(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)
+  def validate_verbose(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)
   def valid(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)
 
   # Backward compatibility

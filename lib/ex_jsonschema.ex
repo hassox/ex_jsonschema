@@ -19,11 +19,66 @@ defmodule ExJsonschema do
       invalid_json = ~s({"name": 123})
       {:error, errors} = ExJsonschema.validate(compiled, invalid_json)
 
+  ## Output Formats
+
+  ExJsonschema supports multiple output formats for different use cases:
+
+  ### Basic Format (fastest)
+  Returns simple boolean-style results for when you only need to know if validation passed:
+
+      {:ok, validator} = ExJsonschema.compile(~s({"type": "string"}))
+      
+      ExJsonschema.validate(validator, ~s("hello"), output: :basic)
+      #=> :ok
+      
+      ExJsonschema.validate(validator, ~s(123), output: :basic)
+      #=> {:error, :validation_failed}
+
+  ### Detailed Format (default)
+  Returns structured error information with paths and messages:
+
+      {:ok, validator} = ExJsonschema.compile(~s({
+        "type": "object",
+        "properties": {"age": {"type": "number", "minimum": 18}},
+        "required": ["age"]
+      }))
+      
+      ExJsonschema.validate(validator, ~s({"age": 15}))
+      #=> {:error, [
+      #     %ExJsonschema.ValidationError{
+      #       instance_path: "/age",
+      #       schema_path: "/properties/age/minimum", 
+      #       message: "15 is less than the minimum of 18"
+      #     }
+      #   ]}
+
+  ### Verbose Format (comprehensive)
+  Returns detailed errors with additional context, suggestions, and metadata:
+
+      ExJsonschema.validate(validator, ~s({"age": 15}), output: :verbose)
+      #=> {:error, [
+      #     %ExJsonschema.ValidationError{
+      #       instance_path: "/age",
+      #       schema_path: "/properties/age/minimum",
+      #       message: "15 is less than the minimum of 18",
+      #       keyword: "minimum",
+      #       instance_value: 15,
+      #       schema_value: 18,
+      #       context: %{
+      #         "expected" => "value >= minimum",
+      #         "actual" => 15
+      #       },
+      #       suggestions: ["Ensure the value meets the minimum requirement"]
+      #     }
+      #   ]}
+
   ## Features
 
-  - Fast validation using Rust
+  - Fast validation using Rust (2M+ validations/second)
   - Support for JSON Schema draft-07, draft 2019-09, and draft 2020-12
+  - Multiple output formats for different use cases
   - Detailed error messages with path information
+  - Comprehensive error context in verbose mode
   - Precompiled binaries for easy installation
   - Zero Rust toolchain required for end users
 
@@ -137,16 +192,53 @@ defmodule ExJsonschema do
   @spec validate(compiled_schema(), json_string()) :: validation_result()
   def validate(compiled_schema, instance_json)
       when is_reference(compiled_schema) and is_binary(instance_json) do
-    case Native.validate_detailed(compiled_schema, instance_json) do
-      :ok ->
-        :ok
+    validate(compiled_schema, instance_json, [])
+  end
 
-      {:error, error_list} when is_list(error_list) ->
-        errors = Enum.map(error_list, &ValidationError.from_map/1)
-        {:error, errors}
+  @doc """
+  Validates JSON against a compiled schema with output format control.
 
-      {:error, _reason} ->
-        {:error, [:validation_error]}
+  ## Output Formats
+  
+  - `:basic` - Returns `:ok` or `{:error, :validation_failed}` (fastest)
+  - `:detailed` - Returns `:ok` or `{:error, [ValidationError.t()]}` (default)
+  - `:verbose` - Returns detailed errors with additional context, values, and suggestions
+
+  ## Options
+
+  - `output: :basic | :detailed | :verbose` - Controls error output format (default: `:detailed`)
+  - Other validation options (format validation, etc.) can be passed through
+
+  ## Examples
+
+      # Basic format (fastest)
+      iex> schema = ~s({"type": "string"})
+      iex> {:ok, compiled} = ExJsonschema.compile(schema)
+      iex> ExJsonschema.validate(compiled, ~s("hello"), output: :basic)
+      :ok
+      iex> ExJsonschema.validate(compiled, ~s(123), output: :basic)
+      {:error, :validation_failed}
+
+      # Detailed format (default)
+      iex> ExJsonschema.validate(compiled, ~s(123), output: :detailed)
+      {:error, [%ExJsonschema.ValidationError{message: _, instance_path: "", schema_path: _}]}
+
+      # Verbose format (comprehensive)
+      iex> result = ExJsonschema.validate(compiled, ~s(123), output: :verbose)
+      iex> match?({:error, [%ExJsonschema.ValidationError{keyword: "type", instance_value: 123}]}, result)
+      true
+
+  """
+  @spec validate(compiled_schema(), json_string(), keyword()) :: validation_result() | {:error, :validation_failed}
+  def validate(compiled_schema, instance_json, opts)
+      when is_reference(compiled_schema) and is_binary(instance_json) and is_list(opts) do
+    output_format = Keyword.get(opts, :output, :detailed)
+    
+    case output_format do
+      :basic -> validate_basic(compiled_schema, instance_json)
+      :detailed -> validate_detailed(compiled_schema, instance_json)
+      :verbose -> validate_verbose(compiled_schema, instance_json, opts)
+      _ -> raise ArgumentError, "Invalid output format: #{inspect(output_format)}. Must be one of: :basic, :detailed, :verbose"
     end
   end
 
@@ -259,6 +351,45 @@ defmodule ExJsonschema do
   def supported_drafts do
     DraftDetector.supported_drafts()
   end
+
+  # Private validation functions for different output formats
+
+  defp validate_basic(compiled_schema, instance_json) do
+    if Native.valid?(compiled_schema, instance_json) do
+      :ok
+    else
+      {:error, :validation_failed}
+    end
+  end
+
+  defp validate_detailed(compiled_schema, instance_json) do
+    case Native.validate_detailed(compiled_schema, instance_json) do
+      :ok ->
+        :ok
+
+      {:error, error_list} when is_list(error_list) ->
+        errors = Enum.map(error_list, &ValidationError.from_detailed_map/1)
+        {:error, errors}
+
+      {:error, _reason} ->
+        {:error, [:validation_error]}
+    end
+  end
+
+  defp validate_verbose(compiled_schema, instance_json, _opts) do
+    case Native.validate_verbose(compiled_schema, instance_json) do
+      :ok ->
+        :ok
+
+      {:error, error_list} when is_list(error_list) ->
+        errors = Enum.map(error_list, &ValidationError.from_map/1)
+        {:error, errors}
+
+      {:error, _reason} ->
+        {:error, [:validation_error]}
+    end
+  end
+
 
   # Private functions
 

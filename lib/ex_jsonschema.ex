@@ -404,6 +404,64 @@ defmodule ExJsonschema do
   `test/examples/` directory which contains 28+ working examples 
   covering all error handling scenarios.
 
+  ## Logging Configuration
+
+  ExJsonschema provides comprehensive structured logging to help with debugging,
+  monitoring, and observability. Logging can be configured per environment:
+
+  ### Development Configuration (config/dev.exs)
+      # Balanced logging for development (good for benchmarks)
+      config :logger, level: :info
+      
+      config :logger, :console,
+        format: "$time $metadata[$level] $message\\n",
+        metadata: [:error_count, :schema_size, :instance_size, :format]
+      
+      # ExJsonschema-specific settings
+      config :ex_jsonschema,
+        log_level: :info,
+        log_compilation_time: true,
+        log_validation_time: true,
+        log_error_details: true
+      
+      # For detailed debugging, temporarily use:
+      # config :logger, level: :debug
+
+  ### Production Configuration (config/prod.exs)
+      # Only log warnings and errors in production
+      config :logger, level: :warning
+      
+      config :logger, :console,
+        format: "$time $metadata[$level] $message\\n",
+        metadata: [:request_id, :error_count]
+      
+      # Minimal logging for production performance
+      config :ex_jsonschema,
+        log_level: :warning,
+        log_compilation_time: false,
+        log_validation_time: false,
+        log_error_details: false
+
+  ### Log Output Examples
+
+  When enabled, ExJsonschema logs provide detailed insights:
+
+      # Schema compilation logs
+      14:23:15.123 [info] Schema compilation successful schema_size=256 draft=draft7
+      
+      # Validation logs
+      14:23:15.125 [debug] Starting validation instance_size=128 output_format=detailed
+      14:23:15.126 [debug] Validation failed with errors error_count=2 output_format=detailed
+      
+      # Error analysis logs  
+      14:23:15.130 [info] Error analysis complete error_count=2 recommendation_count=3
+      
+      # Error formatting logs
+      14:23:15.132 [info] Error formatting complete error_count=2 format=human output_size=512
+
+  These logs help track performance, identify validation patterns, and debug issues
+  in both development and production environments.
+
   ## Features
 
   - High-performance validation using Rust (1.4M-1.9M validations/second)
@@ -418,6 +476,8 @@ defmodule ExJsonschema do
   - Zero Rust toolchain required for end users
 
   """
+
+  require Logger
 
   alias ExJsonschema.{
     CompilationError,
@@ -533,13 +593,50 @@ defmodule ExJsonschema do
   @spec compile(json_string(), Options.t() | keyword()) ::
           {:ok, compiled_schema()} | {:error, CompilationError.t()}
   def compile(schema_json, %Options{} = options) when is_binary(schema_json) do
-    compile_with_options(schema_json, options)
+    Logger.debug("Starting schema compilation", %{
+      schema_size: byte_size(schema_json),
+      draft: options.draft,
+      output_format: options.output_format
+    })
+
+    result = compile_with_options(schema_json, options)
+
+    case result do
+      {:ok, _compiled} ->
+        Logger.info("Schema compilation successful", %{
+          schema_size: byte_size(schema_json),
+          draft: options.draft
+        })
+
+      {:error, error} ->
+        Logger.error("Schema compilation failed", %{
+          schema_size: byte_size(schema_json),
+          draft: options.draft,
+          error: inspect(error)
+        })
+    end
+
+    result
   end
 
   def compile(schema_json, options) when is_binary(schema_json) and is_list(options) do
+    Logger.debug("Converting keyword options to Options struct", %{
+      options: options,
+      schema_size: byte_size(schema_json)
+    })
+
     case Options.validate(Options.new(options)) do
-      {:ok, validated_options} -> compile_with_options(schema_json, validated_options)
-      {:error, reason} -> {:error, CompilationError.from_options_error(reason)}
+      {:ok, validated_options} ->
+        Logger.debug("Options validation successful")
+        compile_with_options(schema_json, validated_options)
+
+      {:error, reason} ->
+        Logger.warning("Options validation failed", %{
+          reason: reason,
+          options: options
+        })
+
+        {:error, CompilationError.from_options_error(reason)}
     end
   end
 
@@ -630,12 +727,51 @@ defmodule ExJsonschema do
   # Accept Options struct
   def validate(compiled_schema, instance_json, %Options{} = options)
       when is_reference(compiled_schema) and is_binary(instance_json) do
-    validate_with_options(compiled_schema, instance_json, options)
+    Logger.debug("Starting validation", %{
+      instance_size: byte_size(instance_json),
+      output_format: options.output_format,
+      validate_formats: options.validate_formats
+    })
+
+    result = validate_with_options(compiled_schema, instance_json, options)
+
+    case result do
+      :ok ->
+        Logger.debug("Validation successful", %{
+          instance_size: byte_size(instance_json),
+          output_format: options.output_format
+        })
+
+      {:error, :validation_failed} ->
+        Logger.debug("Basic validation failed", %{
+          instance_size: byte_size(instance_json)
+        })
+
+      {:error, errors} when is_list(errors) ->
+        Logger.debug("Validation failed with errors", %{
+          instance_size: byte_size(instance_json),
+          error_count: length(errors),
+          output_format: options.output_format
+        })
+
+      {:error, error} ->
+        Logger.warning("Validation failed with unexpected error", %{
+          instance_size: byte_size(instance_json),
+          error: inspect(error)
+        })
+    end
+
+    result
   end
 
   # Accept keyword list
   def validate(compiled_schema, instance_json, opts)
       when is_reference(compiled_schema) and is_binary(instance_json) and is_list(opts) do
+    Logger.debug("Converting validation options", %{
+      instance_size: byte_size(instance_json),
+      options: opts
+    })
+
     validated_options = validate_and_normalize_options(opts)
     validate_with_options(compiled_schema, instance_json, validated_options)
   end
@@ -949,7 +1085,21 @@ defmodule ExJsonschema do
           ErrorFormatter.format_options()
         ) :: String.t()
   def format_errors(errors, format, options \\ []) do
-    ErrorFormatter.format(errors, format, options)
+    Logger.debug("Formatting validation errors", %{
+      error_count: length(errors),
+      format: format,
+      options: options
+    })
+
+    result = ErrorFormatter.format(errors, format, options)
+
+    Logger.info("Error formatting complete", %{
+      error_count: length(errors),
+      format: format,
+      output_size: byte_size(result)
+    })
+
+    result
   end
 
   @doc """
@@ -1141,13 +1291,17 @@ defmodule ExJsonschema do
   # Private functions
 
   defp compile_with_options(schema_json, %Options{draft: :auto} = options) do
+    Logger.debug("Auto-detecting JSON Schema draft")
+
     # Auto-detect draft from schema and update options
     case DraftDetector.detect_draft(schema_json) do
       {:ok, detected_draft} ->
+        Logger.debug("Draft auto-detection successful", %{detected_draft: detected_draft})
         updated_options = %{options | draft: detected_draft}
         compile_with_native_options(schema_json, updated_options)
 
       {:error, reason} ->
+        Logger.warning("Draft auto-detection failed", %{reason: reason})
         {:error, CompilationError.from_detection_error(reason)}
     end
   end
@@ -1157,30 +1311,43 @@ defmodule ExJsonschema do
   end
 
   defp compile_with_native_options(schema_json, %Options{draft: draft} = options) do
+    Logger.debug("Compiling with native options", %{draft: draft})
+
     # For M3.5: Draft-specific compilation with validation
     case validate_compilation_options(schema_json, options) do
       :ok ->
+        Logger.debug("Compilation options validation successful")
+
         # Use draft-specific compilation when draft is specified (not :auto)
         result =
           case draft do
             :auto ->
+              Logger.debug("Using generic compilation (auto draft)")
               # Already resolved by compile_with_options, shouldn't reach here
               Native.compile_schema(schema_json)
 
             draft when draft in [:draft4, :draft6, :draft7, :draft201909, :draft202012] ->
+              Logger.debug("Using draft-specific compilation", %{draft: draft})
               Native.compile_schema_with_draft(schema_json, draft)
 
             _ ->
+              Logger.warning("Unknown draft, falling back to generic compilation", %{draft: draft})
               # Fallback to generic compilation
               Native.compile_schema(schema_json)
           end
 
         case result do
-          {:ok, compiled} -> {:ok, compiled}
-          {:error, error_map} -> {:error, CompilationError.from_map(error_map)}
+          {:ok, compiled} ->
+            Logger.debug("Native compilation successful")
+            {:ok, compiled}
+
+          {:error, error_map} ->
+            Logger.error("Native compilation failed", %{error_map: error_map})
+            {:error, CompilationError.from_map(error_map)}
         end
 
       {:error, reason} ->
+        Logger.warning("Compilation options validation failed", %{reason: reason})
         {:error, CompilationError.from_validation_error(reason)}
     end
   end

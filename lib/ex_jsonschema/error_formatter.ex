@@ -52,6 +52,7 @@ defmodule ExJsonschema.ErrorFormatter do
   - `max_errors: pos_integer()` - Maximum errors to display (default: 20)
   """
 
+  require Logger
   alias ExJsonschema.ValidationError
 
   # Available output formats
@@ -151,12 +152,31 @@ defmodule ExJsonschema.ErrorFormatter do
   def format(errors, format, options \\ [])
 
   def format(errors, format, options) when is_list(errors) and format in @available_formats do
+    Logger.debug("Formatting errors", %{
+      error_count: length(errors),
+      format: format,
+      options: options
+    })
+
     validated_options = validate_options(options, format)
 
-    case errors do
-      [] -> format_empty(format)
-      _ -> do_format(errors, format, validated_options)
-    end
+    result =
+      case errors do
+        [] ->
+          Logger.debug("No errors to format, returning empty format")
+          format_empty(format)
+
+        _ ->
+          Logger.debug("Processing #{length(errors)} errors for #{format} format")
+          do_format(errors, format, validated_options)
+      end
+
+    Logger.debug("Error formatting complete", %{
+      format: format,
+      output_size: byte_size(result)
+    })
+
+    result
   end
 
   def format(errors, _format, _options) when not is_list(errors) do

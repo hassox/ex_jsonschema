@@ -24,6 +24,7 @@ defmodule ExJsonschema.ErrorAnalyzer do
       
   """
 
+  require Logger
   alias ExJsonschema.ValidationError
 
   @type error_category :: :type_mismatch | :constraint_violation | :structural | :format | :custom
@@ -57,13 +58,28 @@ defmodule ExJsonschema.ErrorAnalyzer do
   """
   @spec analyze([ValidationError.t()]) :: error_analysis()
   def analyze(errors) when is_list(errors) do
+    Logger.debug("Starting error analysis", %{error_count: length(errors)})
+
+    categories = categorize_errors(errors)
+    severities = analyze_severities(errors)
+    patterns = detect_patterns(errors)
+    paths = most_common_paths(errors)
+    recommendations = generate_recommendations(errors)
+
+    Logger.info("Error analysis complete", %{
+      error_count: length(errors),
+      category_count: map_size(categories),
+      pattern_count: length(patterns),
+      recommendation_count: length(recommendations)
+    })
+
     %{
       total_errors: length(errors),
-      categories: categorize_errors(errors),
-      severities: analyze_severities(errors),
-      patterns: detect_patterns(errors),
-      most_common_paths: most_common_paths(errors),
-      recommendations: generate_recommendations(errors)
+      categories: categories,
+      severities: severities,
+      patterns: patterns,
+      most_common_paths: paths,
+      recommendations: recommendations
     }
   end
 

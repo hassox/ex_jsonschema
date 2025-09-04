@@ -34,6 +34,7 @@ defmodule ExJsonschema.DraftDetector do
 
   """
 
+  require Logger
   alias ExJsonschema.Native
 
   @type draft :: :draft4 | :draft6 | :draft7 | :draft201909 | :draft202012
@@ -136,8 +137,22 @@ defmodule ExJsonschema.DraftDetector do
   end
 
   def detect_draft(schema) when is_binary(schema) do
+    Logger.debug("Detecting JSON Schema draft from string", %{
+      schema_size: byte_size(schema)
+    })
+
     # Delegate to Rust NIF and handle response format
-    handle_rust_response(Native.detect_draft_from_schema(schema))
+    result = handle_rust_response(Native.detect_draft_from_schema(schema))
+
+    case result do
+      {:ok, draft} ->
+        Logger.debug("Draft detection successful", %{detected_draft: draft})
+
+      {:error, reason} ->
+        Logger.warning("Draft detection failed", %{reason: reason})
+    end
+
+    result
   end
 
   def detect_draft(schema) do

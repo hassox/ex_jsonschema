@@ -18,6 +18,10 @@ defmodule ExJsonschema do
 
       invalid_json = ~s({"name": 123})
       {:error, errors} = ExJsonschema.validate(compiled, invalid_json)
+      
+      # Format errors for display
+      ExJsonschema.format_errors(errors, :human)
+      # => "Validation Error\n  Location: /name\n  Message: 123 is not of type string (type)"
 
   ## Output Formats
 
@@ -126,6 +130,70 @@ defmodule ExJsonschema do
       ExJsonschema.Profile.lenient(draft: :draft7)
       ExJsonschema.Profile.performance(output_format: :detailed)
 
+  ## Error Formatting
+
+  ExJsonschema provides powerful error formatting utilities to display validation 
+  errors in multiple formats suited for different use cases:
+
+  ### Human-Readable Format (`:human`)
+  Best for console applications, logs, and developer feedback:
+
+      {:error, errors} = ExJsonschema.validate(validator, invalid_json)
+      
+      # Basic human-readable format
+      ExJsonschema.format_errors(errors, :human)
+      
+      # Disable colors for logging
+      ExJsonschema.format_errors(errors, :human, color: false)
+      
+      # Limit number of errors displayed
+      ExJsonschema.format_errors(errors, :human, max_errors: 5)
+
+  ### JSON Format (`:json`)
+  Perfect for APIs, structured logging, and programmatic processing:
+
+      # Compact JSON for APIs
+      ExJsonschema.format_errors(errors, :json)
+      
+      # Pretty-printed JSON for debugging
+      ExJsonschema.format_errors(errors, :json, pretty: true)
+
+  ### Table Format (`:table`)
+  Ideal for comparing multiple errors and reports:
+
+      # Standard table format
+      ExJsonschema.format_errors(errors, :table)
+      
+      # Compact table for large error lists
+      ExJsonschema.format_errors(errors, :table, compact: true)
+
+  ### Markdown Format (`:markdown`)
+  Great for documentation, README files, and web display:
+
+      # Basic markdown format
+      ExJsonschema.format_errors(errors, :markdown)
+      
+      # With table of contents and custom heading level
+      ExJsonschema.format_errors(errors, :markdown, 
+        include_toc: true, 
+        heading_level: 1
+      )
+
+  ### LLM Format (`:llm`)
+  Optimized for AI assistant consumption and analysis:
+
+      # Prose format (default)
+      ExJsonschema.format_errors(errors, :llm)
+      
+      # Structured format for precise parsing
+      ExJsonschema.format_errors(errors, :llm, 
+        structured: true,
+        include_schema_context: true
+      )
+
+  Each format automatically handles complex nested paths, unicode characters,
+  and rich error context including suggestions and schema metadata.
+
   ## Features
 
   - High-performance validation using Rust (1.4M-1.9M validations/second)
@@ -140,7 +208,7 @@ defmodule ExJsonschema do
 
   """
 
-  alias ExJsonschema.{CompilationError, DraftDetector, Native, Options, ValidationError}
+  alias ExJsonschema.{CompilationError, DraftDetector, ErrorFormatter, Native, Options, ValidationError}
 
   @typedoc """
   A compiled JSON Schema validator optimized for repeated use.
@@ -497,6 +565,36 @@ defmodule ExJsonschema do
   @spec supported_drafts() :: [Options.draft()]
   def supported_drafts do
     DraftDetector.supported_drafts()
+  end
+
+  @doc """
+  Formats validation errors for display using the specified format.
+  
+  This is a convenience function that delegates to `ExJsonschema.ErrorFormatter.format/3`.
+  
+  ## Supported Formats
+  
+  - `:human` - Human-readable text format with colors and suggestions
+  - `:json` - Structured JSON format for programmatic use
+  - `:table` - Tabular format for easy scanning of multiple errors
+  - `:markdown` - Markdown format for documentation and web display
+  - `:llm` - LLM-optimized format for AI assistant consumption
+  
+  ## Examples
+  
+      # Format errors for human consumption
+      ExJsonschema.format_errors(errors, :human)
+      
+      # Format as pretty-printed JSON
+      ExJsonschema.format_errors(errors, :json, pretty: true)
+      
+      # Format as compact table
+      ExJsonschema.format_errors(errors, :table, compact: true)
+      
+  """
+  @spec format_errors([ValidationError.t()], ErrorFormatter.format(), ErrorFormatter.format_options()) :: String.t()
+  def format_errors(errors, format, options \\ []) do
+    ErrorFormatter.format(errors, format, options)
   end
 
   # Private helper functions for validation options

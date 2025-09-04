@@ -1,0 +1,9 @@
+| Path                       | Error                                              | Keyword              |
++----------------------------+----------------------------------------------------+----------------------+
+| /preferences/notifications | Additional properties are not allowed ('sms' wa... | additionalProperties |
+| /preferences/theme         | "purple" is not one of "light", "dark" or "auto"   | enum                 |
+| /settings/language         | "invalid-lang-code" does not match "^[a-z]{2}(-... | pattern              |
+| /user/age                  | 15 is less than the minimum of 18                  | minimum              |
+| /user/name                 | "X" is shorter than 2 characters                   | minLength            |
+| /user/roles/1              | "invalid-role" is not one of "admin", "user" or... | enum                 |
+| /user/roles                | ["admin","invalid-role","admin"] has non-unique... | uniqueItems          |

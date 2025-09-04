@@ -1,0 +1,77 @@
+VALIDATION_STATUS: FAILED
+ERROR_COUNT: 7
+ERRORS_SHOWN: 7
+
+ERROR_1:
+  LOCATION: /preferences/notifications
+  MESSAGE: Additional properties are not allowed ('sms' was unexpected)
+  KEYWORD: additionalProperties
+  SCHEMA_PATH: /properties/preferences/properties/notifications/additionalProperties
+  INVALID_VALUE: %{"email" => true, "push" => false, "sms" => true}
+  EXPECTED_VALUE: "constraint: additionalProperties"
+  SUGGESTIONS:
+    - Validation failed for 'additionalProperties' constraint
+    - Expected: "constraint: additionalProperties"
+    - Check the schema documentation for this constraint
+    - Verify your data matches the expected format
+    - Error details: Additional properties are not allowed ('sms' was unexpected)
+
+ERROR_2:
+  LOCATION: /preferences/theme
+  MESSAGE: "purple" is not one of "light", "dark" or "auto"
+  KEYWORD: enum
+  SCHEMA_PATH: /properties/preferences/properties/theme/enum
+  INVALID_VALUE: "purple"
+  EXPECTED_VALUE: ["light", "dark", "auto"]
+  SUGGESTIONS:
+    - Value must be one of: ["light","dark","auto"]
+
+ERROR_3:
+  LOCATION: /settings/language
+  MESSAGE: "invalid-lang-code" does not match "^[a-z]{2}(-[A-Z]{2})?$"
+  KEYWORD: pattern
+  SCHEMA_PATH: /properties/settings/properties/language/pattern
+  INVALID_VALUE: "invalid-lang-code"
+  EXPECTED_VALUE: "^[a-z]{2}(-[A-Z]{2})?$"
+  SUGGESTIONS:
+    - String must match pattern: "^[a-z]{2}(-[A-Z]{2})?$"
+
+ERROR_4:
+  LOCATION: /user/age
+  MESSAGE: 15 is less than the minimum of 18
+  KEYWORD: minimum
+  SCHEMA_PATH: /properties/user/properties/age/minimum
+  INVALID_VALUE: 15
+  EXPECTED_VALUE: 18
+  SUGGESTIONS:
+    - Value must be >= 18
+
+ERROR_5:
+  LOCATION: /user/name
+  MESSAGE: "X" is shorter than 2 characters
+  KEYWORD: minLength
+  SCHEMA_PATH: /properties/user/properties/name/minLength
+  INVALID_VALUE: "X"
+  EXPECTED_VALUE: 2
+  SUGGESTIONS:
+    - String must be at least 2 characters
+
+ERROR_6:
+  LOCATION: /user/roles/1
+  MESSAGE: "invalid-role" is not one of "admin", "user" or "moderator"
+  KEYWORD: enum
+  SCHEMA_PATH: /properties/user/properties/roles/items/enum
+  INVALID_VALUE: "invalid-role"
+  EXPECTED_VALUE: ["admin", "user", "moderator"]
+  SUGGESTIONS:
+    - Value must be one of: ["admin","user","moderator"]
+
+ERROR_7:
+  LOCATION: /user/roles
+  MESSAGE: ["admin","invalid-role","admin"] has non-unique elements
+  KEYWORD: uniqueItems
+  SCHEMA_PATH: /properties/user/properties/roles/uniqueItems
+  INVALID_VALUE: ["admin", "invalid-role", "admin"]
+  EXPECTED_VALUE: "constraint: uniqueItems"
+  SUGGESTIONS:
+    - Array items must be unique

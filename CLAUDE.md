@@ -1,0 +1,1 @@
+- before implementing features, check the documentation of the rust library to see if it's already implemented there. Always prefer the rust implementation whenver it's available. We're creating a wrapper around the rust library after all!

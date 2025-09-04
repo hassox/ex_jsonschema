@@ -2,8 +2,8 @@
 
 ## 📊 Current Status: M2 MILESTONE COMPLETE - Enhanced Core Validation Ready!
 
-**Overall Progress**: 7/7 M2 tasks complete (100% of M2)  
-**Phase**: 🟢 M2 Enhanced Core Validation COMPLETE  
+**Overall Progress**: 8/8 M2 tasks complete (100% of M2)  
+**Phase**: 🟢 M2 Enhanced Core Validation - COMPLETE  
 **Next Action**: Begin M3 Configuration Profiles & Error Enhancement
 
 ---
@@ -13,8 +13,8 @@
 | Milestone | Status | Progress | Due Date | Notes |
 |-----------|--------|----------|----------|-------|
 | **M1: Foundation** | 🟢 Complete | 6/6 tasks | Month 1 | ALL TASKS COMPLETE |
-| **M2: Core Validation** | 🟢 Complete | 7/7 tasks | Month 2 | ALL TASKS COMPLETE |
-| **M3: Config/Errors** | ⚪ Not Started | 0/6 tasks | Month 3 | Blocked by M2 |
+| **M2: Core Validation** | 🟢 Complete | 8/8 tasks | Month 2 | ALL TASKS COMPLETE |
+| **M3: Config/Errors** | ⚪ Not Started | 0/6 tasks | Month 3 | Ready to start |
 | **M4: Schema Mgmt** | ⚪ Not Started | 0/6 tasks | Month 4 | Blocked by M3 |
 | **M5: References** | ⚪ Not Started | 0/7 tasks | Month 5-6 | Blocked by M4 |
 | **M6: Performance** | ⚪ Not Started | 0/7 tasks | Month 6-7 | Blocked by M5 |
@@ -155,6 +155,14 @@ None - M1.1 complete, ready for next tasks
   - Excluded non-essential modules (Mix tasks, auto-generated protocols) from coverage
   - All 163 tests passing including 8 property tests
   - Test coverage configuration added to mix.exs with proper exclusions
+- [x] **M2.8 Complete**: Draft detector refactored to use Rust implementation
+  - Successfully migrated from Elixir draft detection logic to existing Rust NIF
+  - Updated detect_draft/1 functions to delegate to Native.detect_draft_from_schema/1
+  - Added handle_rust_response/1 helper for API compatibility with structured error handling
+  - Maintained backward compatibility while leveraging Rust performance and correctness
+  - All 30 draft detector tests passing with no regressions
+  - Improved module documentation to reflect Rust-backed implementation
+  - Achieved performance and correctness benefits through thin Elixir wrapper design
 
 ### Key Accomplishments
 - ✅ Comprehensive upgrade plan created (8 functional surfaces)

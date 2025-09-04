@@ -3,7 +3,9 @@ defmodule ExJsonschema.DraftDetector do
   Automatic JSON Schema draft detection and selection utilities.
 
   This module provides functionality to automatically detect JSON Schema draft versions
-  from schema documents and work with supported draft specifications.
+  from schema documents and work with supported draft specifications. The primary
+  draft detection logic is implemented in Rust for performance and correctness, with
+  this module serving as a convenient Elixir wrapper.
 
   ## Supported Drafts
 
@@ -15,23 +17,24 @@ defmodule ExJsonschema.DraftDetector do
 
   ## Examples
 
-      # Automatic draft detection
+      # Automatic draft detection from schema documents
       schema = %{
         "$schema" => "http://json-schema.org/draft-07/schema#",
         "type" => "object"
       }
       {:ok, :draft7} = DraftDetector.detect_draft(schema)
 
-      # Check if draft is supported
-      DraftDetector.supports_draft?(:draft7) #=> true
-      DraftDetector.supports_draft?(:draft3) #=> false
+      # Detection from JSON strings
+      json = ~s({"$schema": "https://json-schema.org/draft/2020-12/schema"})
+      {:ok, :draft202012} = DraftDetector.detect_draft(json)
 
-      # Get canonical URLs
+      # Utility functions
+      DraftDetector.supports_draft?(:draft7) #=> true
       DraftDetector.draft_url(:draft202012) #=> "https://json-schema.org/draft/2020-12/schema"
 
   """
 
-  require Logger
+  alias ExJsonschema.Native
 
   @type draft :: :draft4 | :draft6 | :draft7 | :draft201909 | :draft202012
   @type schema :: map() | String.t()
@@ -114,26 +117,26 @@ defmodule ExJsonschema.DraftDetector do
   """
   @spec detect_draft(schema()) :: detection_result()
   def detect_draft(schema) when is_map(schema) do
+    # Check for invalid $schema value first (maintain compatibility)
     case Map.get(schema, "$schema") do
-      nil ->
-        {:ok, @default_draft}
+      val when is_integer(val) or is_float(val) or is_boolean(val) or is_list(val) ->
+        {:error, "Invalid $schema value: must be a string, got #{inspect(val)}"}
+      
+      _ ->
+        # Convert map to JSON string for Rust NIF
+        case Jason.encode(schema) do
+          {:ok, schema_json} ->
+            handle_rust_response(Native.detect_draft_from_schema(schema_json))
 
-      schema_url when is_binary(schema_url) ->
-        detect_draft_from_url(schema_url)
-
-      invalid_value ->
-        {:error, "Invalid $schema value: must be a string, got #{inspect(invalid_value)}"}
+          {:error, %Jason.EncodeError{} = error} ->
+            {:error, "Invalid schema data: #{Exception.message(error)}"}
+        end
     end
   end
 
   def detect_draft(schema) when is_binary(schema) do
-    case Jason.decode(schema) do
-      {:ok, parsed_schema} ->
-        detect_draft(parsed_schema)
-
-      {:error, %Jason.DecodeError{} = error} ->
-        {:error, "Invalid JSON: #{Exception.message(error)}"}
-    end
+    # Delegate to Rust NIF and handle response format
+    handle_rust_response(Native.detect_draft_from_schema(schema))
   end
 
   def detect_draft(schema) do
@@ -143,13 +146,17 @@ defmodule ExJsonschema.DraftDetector do
   @doc """
   Detects draft version from a schema URL.
 
+  This function provides URL-based draft detection as a convenience utility.
+  For schema document detection, use `detect_draft/1` which delegates to the
+  underlying Rust implementation for better performance.
+
   ## Examples
 
       iex> DraftDetector.detect_draft_from_url("http://json-schema.org/draft-07/schema#")
       {:ok, :draft7}
 
       iex> DraftDetector.detect_draft_from_url("https://example.com/custom-schema")
-      {:error, "Unknown schema URL format"}
+      {:ok, :draft202012}  # Falls back to default draft
 
   """
   @spec detect_draft_from_url(String.t() | nil) :: detection_result()
@@ -257,6 +264,27 @@ defmodule ExJsonschema.DraftDetector do
   end
 
   # Private helper functions
+
+  # Convert Rust NIF response format to maintain API compatibility
+  defp handle_rust_response({:ok, draft}) when is_atom(draft) do
+    {:ok, draft}
+  end
+
+  defp handle_rust_response({:error, error_map}) when is_map(error_map) do
+    # Extract message from Rust error structure  
+    message = error_map["message"] || "Unknown error"
+    details = error_map["details"]
+    
+    if details do
+      {:error, "#{message}: #{details}"}
+    else
+      {:error, message}
+    end
+  end
+
+  defp handle_rust_response(other) do
+    {:error, "Unexpected response from draft detection: #{inspect(other)}"}
+  end
 
   defp extract_draft_from_url_pattern(url) do
     cond do

@@ -32,7 +32,12 @@ jobs:
         shell: bash
         run: |
           echo "PROJECT_NAME=ex_jsonschema" >> $GITHUB_ENV
-          echo "PROJECT_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "PROJECT_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          else
+            # For workflow_dispatch or other events, use the current commit or default
+            echo "PROJECT_VERSION=dev-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          fi
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -76,14 +81,20 @@ jobs:
             *-pc-windows-*) LIB_PREFIX="" ;;
           esac
           
-          # The file extension is .so for Linux/macOS, .dll for Windows
-          LIB_EXTENSION="so"
+          # Rust produces different extensions but NIFs need .so (except Windows)
+          BUILT_EXTENSION="so"
           case ${{ matrix.job.target }} in
-            *-pc-windows-*) LIB_EXTENSION="dll" ;;
+            *-pc-windows-*) BUILT_EXTENSION="dll" ;;
+            *-apple-darwin) BUILT_EXTENSION="dylib" ;;
           esac
           
-          BUILT_LIB="target/${{ matrix.job.target }}/release/${LIB_PREFIX}ex_jsonschema.${LIB_EXTENSION}"
-          FINAL_LIB="libex_jsonschema.${LIB_EXTENSION}"
+          FINAL_EXTENSION="so"
+          case ${{ matrix.job.target }} in
+            *-pc-windows-*) FINAL_EXTENSION="dll" ;;
+          esac
+          
+          BUILT_LIB="target/${{ matrix.job.target }}/release/${LIB_PREFIX}ex_jsonschema.${BUILT_EXTENSION}"
+          FINAL_LIB="libex_jsonschema.${FINAL_EXTENSION}"
           
           echo "Built lib: $BUILT_LIB"
           echo "Final lib: $FINAL_LIB"

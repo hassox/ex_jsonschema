@@ -95,7 +95,8 @@ defmodule ExJsonschema.MixProject do
 
   defp rustler_mode do
     # Use precompiled NIFs in production, compile from source in dev
-    if System.get_env("EX_JSONSCHEMA_BUILD") in ["1", "true"] or Mix.env() == :dev do
+    
+    if (System.get_env("EX_JSONSCHEMA_BUILD") in ["1", "true"]) or (Mix.env() in [:dev, :test]) do
       :release
     else
       {:precompiled, "#{@source_url}/releases/download/v#{@version}"}

@@ -2,479 +2,82 @@ defmodule ExJsonschema do
   @moduledoc """
   High-performance JSON Schema validation for Elixir using Rust.
 
-  This library provides a fast and spec-compliant JSON Schema validator
-  powered by the Rust `jsonschema` crate. It supports multiple JSON Schema
-  draft versions and provides detailed validation error information.
+  Fast, spec-compliant JSON Schema validation powered by the Rust `jsonschema` 
+  crate with support for multiple draft versions and comprehensive error reporting.
 
   ## Quick Start
 
-      # Compile a schema
+      # Compile and validate
       schema = ~s({"type": "object", "properties": {"name": {"type": "string"}}})
-      {:ok, compiled} = ExJsonschema.compile(schema)
-
-      # Validate JSON
-      valid_json = ~s({"name": "John"})
-      :ok = ExJsonschema.validate(compiled, valid_json)
-
-      invalid_json = ~s({"name": 123})
-      {:error, errors} = ExJsonschema.validate(compiled, invalid_json)
+      {:ok, validator} = ExJsonschema.compile(schema)
+      :ok = ExJsonschema.validate(validator, ~s({"name": "John"}))
       
-      # Format errors for display
+      # Get detailed errors
+      {:error, errors} = ExJsonschema.validate(validator, ~s({"name": 123}))
       ExJsonschema.format_errors(errors, :human)
-      # => "Validation Error\n  Location: /name\n  Message: 123 is not of type string (type)"
+
+  ## Core Functions
+
+  - `compile/1,2` - Compile JSON Schema for validation
+  - `validate/2,3` - Validate JSON against compiled schema  
+  - `valid?/2,3` - Quick boolean validation check
+  - `meta_validate/1` - Validate schema document itself
+  - `format_errors/3` - Format validation errors for display
+  - `analyze_errors/1,2` - Analyze error patterns and severity
 
   ## Output Formats
 
-  ExJsonschema supports multiple output formats for different use cases:
+  - `:basic` - Simple pass/fail (fastest)
+  - `:detailed` - Structured errors with paths (default)
+  - `:verbose` - Comprehensive errors with context and suggestions
 
-  ### Basic Format (fastest)
-  Returns simple boolean-style results for when you only need to know if validation passed:
+  ## Configuration & Options
 
-      {:ok, validator} = ExJsonschema.compile(~s({"type": "string"}))
+      # Use predefined profiles for common scenarios
+      strict_opts = ExJsonschema.Options.new(:strict)      # API validation
+      lenient_opts = ExJsonschema.Options.new(:lenient)    # User forms  
+      perf_opts = ExJsonschema.Options.new(:performance)   # High-volume
       
-      ExJsonschema.validate(validator, ~s("hello"), output: :basic)
-      #=> :ok
-      
-      ExJsonschema.validate(validator, ~s(123), output: :basic)
-      #=> {:error, :validation_failed}
-
-  ### Detailed Format (default)
-  Returns structured error information with paths and messages:
-
-      {:ok, validator} = ExJsonschema.compile(~s({
-        "type": "object",
-        "properties": {"age": {"type": "number", "minimum": 18}},
-        "required": ["age"]
-      }))
-      
-      ExJsonschema.validate(validator, ~s({"age": 15}))
-      #=> {:error, [
-      #     %ExJsonschema.ValidationError{
-      #       instance_path: "/age",
-      #       schema_path: "/properties/age/minimum", 
-      #       message: "15 is less than the minimum of 18"
-      #     }
-      #   ]}
-
-  ### Verbose Format (comprehensive)
-  Returns detailed errors with additional context, suggestions, and metadata:
-
-      ExJsonschema.validate(validator, ~s({"age": 15}), output: :verbose)
-      #=> {:error, [
-      #     %ExJsonschema.ValidationError{
-      #       instance_path: "/age",
-      #       schema_path: "/properties/age/minimum",
-      #       message: "15 is less than the minimum of 18",
-      #       keyword: "minimum",
-      #       instance_value: 15,
-      #       schema_value: 18,
-      #       context: %{
-      #         "instance_path" => "/age",
-      #         "schema_path" => "/properties/age/minimum",
-      #         "minimum_value" => 18,
-      #         "actual_value" => 15,
-      #         "expected" => "value >= 18",
-      #         "actual" => 15
-      #       },
-      #       annotations: %{
-      #         "error_keyword" => "minimum",
-      #         "validation_failed_at" => "/age"
-      #       },
-      #       suggestions: ["Value must be >= 18"]
-      #     }
-      #   ]}
-
-  ## Validation Options
-
-  ExJsonschema supports configurable validation options:
-
-      # Enable format validation
+      # Enable validation options
       ExJsonschema.validate(validator, json, validate_formats: true)
+      ExJsonschema.valid?(validator, json, stop_on_first_error: true)
+
+  ## Draft Support & Meta-Validation
+
+  Supports JSON Schema drafts 4, 6, 7, 2019-09, and 2020-12:
+
+      ExJsonschema.compile_draft7(schema)        # Draft-specific compilation
+      ExJsonschema.compile_auto_draft(schema)    # Auto-detect from $schema
       
-      # Stop on first error for faster validation
-      ExJsonschema.validate(validator, json, stop_on_first_error: true)
+      # Validate schema documents against meta-schemas
+      ExJsonschema.meta_valid?(schema)           # Quick check  
+      ExJsonschema.meta_validate(schema)         # Detailed errors
+
+  ## Error Handling & Analysis
+
+  Rich error formatting and intelligent analysis:
+
+      {:error, errors} = ExJsonschema.validate(validator, invalid_data)
       
-      # Use Options struct for reusable configuration
-      opts = ExJsonschema.Options.new(
-        output_format: :verbose,
-        validate_formats: true,
-        stop_on_first_error: false
-      )
-      ExJsonschema.validate(validator, json, opts)
-
-      # Quick validation with options
-      ExJsonschema.valid?(validator, json, validate_formats: true)
-
-  ## Configuration Profiles
-
-  ExJsonschema includes three predefined profiles optimized for common use cases:
-
-      # Strict validation for APIs and compliance
-      strict_opts = ExJsonschema.Options.new(:strict)
-      {:ok, validator} = ExJsonschema.compile(schema, strict_opts)
-      
-      # Lenient validation for user forms
-      lenient_opts = ExJsonschema.Options.new(:lenient)
-      ExJsonschema.validate(validator, user_data, lenient_opts)
-      
-      # Performance-optimized for high-volume processing
-      perf_opts = ExJsonschema.Options.new(:performance)
-      is_valid = ExJsonschema.valid?(validator, data, perf_opts)
-      
-      # Customize any profile with overrides
-      custom = ExJsonschema.Options.new({:strict, [output_format: :basic]})
-
-  Profiles can also be accessed through the Profile module:
-
-      ExJsonschema.Profile.strict(validate_formats: true)
-      ExJsonschema.Profile.lenient(draft: :draft7)
-      ExJsonschema.Profile.performance(output_format: :detailed)
-
-  ## Error Formatting
-
-  ExJsonschema provides powerful error formatting utilities to display validation 
-  errors in multiple formats suited for different use cases:
-
-  ### Human-Readable Format (`:human`)
-  Best for console applications, logs, and developer feedback:
-
-      {:error, errors} = ExJsonschema.validate(validator, invalid_json)
-      
-      # Basic human-readable format
-      ExJsonschema.format_errors(errors, :human)
-      
-      # Disable colors for logging
-      ExJsonschema.format_errors(errors, :human, color: false)
-      
-      # Limit number of errors displayed
-      ExJsonschema.format_errors(errors, :human, max_errors: 5)
-
-  ### JSON Format (`:json`)
-  Perfect for APIs, structured logging, and programmatic processing:
-
-      # Compact JSON for APIs
-      ExJsonschema.format_errors(errors, :json)
-      
-      # Pretty-printed JSON for debugging
+      # Format for display
+      ExJsonschema.format_errors(errors, :human, color: true)
       ExJsonschema.format_errors(errors, :json, pretty: true)
-
-  ### Table Format (`:table`)
-  Ideal for comparing multiple errors and reports:
-
-      # Standard table format
-      ExJsonschema.format_errors(errors, :table)
-      
-      # Compact table for large error lists
       ExJsonschema.format_errors(errors, :table, compact: true)
-
-  ### Markdown Format (`:markdown`)
-  Great for documentation, README files, and web display:
-
-      # Basic markdown format
-      ExJsonschema.format_errors(errors, :markdown)
       
-      # With table of contents and custom heading level
-      ExJsonschema.format_errors(errors, :markdown, 
-        include_toc: true, 
-        heading_level: 1
-      )
-
-  ### LLM Format (`:llm`)
-  Optimized for AI assistant consumption and analysis:
-
-      # Prose format (default)
-      ExJsonschema.format_errors(errors, :llm)
-      
-      # Structured format for precise parsing
-      ExJsonschema.format_errors(errors, :llm, 
-        structured: true,
-        include_schema_context: true
-      )
-
-  Each format automatically handles complex nested paths, unicode characters,
-  and rich error context including suggestions and schema metadata.
-
-  ## Draft-Specific Compilation Shortcuts
-
-  ExJsonschema provides optimized compilation functions for each supported JSON Schema draft:
-
-      # Draft 4 (legacy applications)
-      {:ok, validator} = ExJsonschema.compile_draft4(schema)
-      
-      # Draft 6 (const and contains keywords)
-      {:ok, validator} = ExJsonschema.compile_draft6(schema)
-      
-      # Draft 7 (most common, conditional schemas)
-      {:ok, validator} = ExJsonschema.compile_draft7(schema)
-      
-      # Draft 2019-09 (modern features)
-      {:ok, validator} = ExJsonschema.compile_draft201909(schema)
-      
-      # Draft 2020-12 (latest specification)
-      {:ok, validator} = ExJsonschema.compile_draft202012(schema)
-      
-      # Automatic draft detection from $schema
-      {:ok, validator} = ExJsonschema.compile_auto_draft(schema)
-
-  These functions provide:
-  - **Performance optimization** - Uses draft-specific validators from the Rust crate
-  - **Feature accuracy** - Ensures validation matches the exact draft specification
-  - **Developer clarity** - Makes draft intentions explicit in your code
-  - **Compatibility** - All shortcuts support the same options as `compile/2`
-
-  ## Error Analysis and Intelligence
-
-  ExJsonschema provides advanced error analysis capabilities that go beyond simple 
-  validation error reporting. These features help developers understand, prioritize,
-  and systematically fix validation issues.
-
-  ### Error Analysis (`:analysis`)
-  Get comprehensive insights into validation errors:
-
-      {:error, errors} = ExJsonschema.validate(validator, invalid_data, output: :verbose)
-      
+      # Analyze patterns and get recommendations
       analysis = ExJsonschema.analyze_errors(errors)
-      
-      # Total error count
-      analysis.total_errors
-      #=> 5
-      
-      # Error categorization
-      analysis.categories
-      #=> %{
-      #     type_mismatch: 2,         # Wrong data types
-      #     constraint_violation: 2,  # Min/max, length violations
-      #     structural: 1,            # Missing properties, array issues
-      #     format: 0,                # Format validation failures
-      #     custom: 0                 # Custom validation rules
-      #   }
-      
-      # Severity classification
-      analysis.severities
-      #=> %{critical: 2, high: 2, medium: 1, low: 0}
-      
-      # Detected patterns
-      analysis.patterns
-      #=> [:missing_properties, :type_conflicts]
-      
-      # Most problematic data paths
-      analysis.most_common_paths
-      #=> ["/user/email", "/user/profile", "/settings"]
-      
-      # Actionable fix recommendations
-      analysis.recommendations
-      #=> [
-      #     "Review required fields - ensure all mandatory properties are included",
-      #     "Check data types - multiple type mismatches detected",
-      #     "Validate constraints - multiple range/length violations found"
-      #   ]
+      analysis.total_errors        # => 5
+      analysis.categories          # => %{type_mismatch: 2, constraint_violation: 3}  
+      analysis.recommendations     # => ["Review required fields...", ...]
 
-  ### Error Summary (`:summary`)
-  Get human-readable analysis summary:
+  ## Comprehensive Documentation
 
-      summary = ExJsonschema.analyze_errors(errors, :summary)
-      puts(summary)
-      
-      # Output:
-      # 5 validation errors detected
-      #
-      # Categories: 2 type mismatches, 2 constraint violations, 1 structural issues
-      #
-      # Severity: 2 critical, 2 high, 1 medium
-      #
-      # Detected patterns: missing required properties, conflicting data types
-      #
-      # Top recommendations:
-      # 1. Review required fields - ensure all mandatory properties are included
-      # 2. Check data types - multiple type mismatches detected
-      # 3. Validate constraints - multiple range/length violations found
+  For detailed guides, examples, and advanced usage:
+  - [HexDocs](https://hexdocs.pm/ex_jsonschema) - Complete API reference
+  - [GitHub](https://github.com/hassox/ex_jsonschema) - Source code and examples
+  - `docs/guides/` - In-depth usage guides and integration patterns
 
-  ### Pattern Detection
-  ExJsonschema automatically detects common error patterns:
-
-  - **Missing Properties** - Required fields not provided
-  - **Type Conflicts** - Multiple type mismatches across the document
-  - **Range Violations** - Min/max, length constraint failures
-  - **Format Issues** - Pattern, enum, and format validation problems
-
-  These patterns help identify systematic data issues and guide comprehensive fixes.
-
-  ### Severity Classification
-  Errors are classified by severity to help prioritize fixes:
-
-  - **Critical** - Type mismatches, missing required fields (blocks core functionality)
-  - **High** - Constraint violations, exact value mismatches (affects business logic)
-  - **Medium** - Format issues, pattern failures (impacts user experience)
-  - **Low** - Minor validation issues (cosmetic or edge cases)
-
-  ### Integration with Error Formatting
-  Analysis insights integrate seamlessly with all error formatting options:
-
-      # Format errors with analysis context
-      formatted = ExJsonschema.format_errors(errors, :human, max_errors: 3)
-      
-      # Get analysis for programmatic processing
-      analysis = ExJsonschema.analyze_errors(errors)
-      
-      # Create comprehensive error report
-      error_report = \"\"\"
-      Validation Failed: \#{analysis.total_errors} errors
-      
-      \#{formatted}
-      
-      Recommendations:
-      \#{analysis.recommendations |> Enum.with_index(1) |> Enum.map(fn {rec, i} -> "\#{i}. \#{rec}" end) |> Enum.join("\\\\n")}
-      \"\"\"
-
-  ## Real-World Integration Patterns
-
-  ExJsonschema's error handling capabilities integrate smoothly with common Elixir 
-  ecosystem tools and frameworks:
-
-  ### Phoenix Controllers
-      def create(conn, params) do
-        case validate_and_process(params) do
-          {:ok, data} -> 
-            json(conn, %{status: "success", data: data})
-          
-          {:error, validation_errors} ->
-            # Convert to user-friendly field errors
-            field_errors = validation_errors
-            |> Enum.group_by(&extract_field/1)
-            |> Map.new(fn {field, errors} -> 
-                 {field, Enum.map(errors, &friendly_message/1)} 
-               end)
-            
-            conn
-            |> put_status(422)
-            |> json(%{status: "error", errors: field_errors})
-        end
-      end
-
-  ### Logging and Monitoring
-      {:error, errors} = ExJsonschema.validate(validator, request)
-      
-      # Log structured error data
-      analysis = ExJsonschema.analyze_errors(errors)
-      
-      Logger.error("Validation failed", %{
-        error_count: analysis.total_errors,
-        categories: analysis.categories,
-        severity_breakdown: analysis.severities,
-        patterns: analysis.patterns
-      })
-      
-      # Send metrics to monitoring system
-      :telemetry.execute([:app, :validation, :failed], %{
-        total_errors: analysis.total_errors,
-        critical_errors: Map.get(analysis.severities, :critical, 0)
-      })
-
-  ### Configuration and Startup Validation
-      def validate_config!(config) do
-        case ExJsonschema.validate(config_validator, config, output: :verbose) do
-          :ok -> :ok
-          
-          {:error, errors} ->
-            formatted = ExJsonschema.format_errors(errors, :human, color: false)
-            
-            raise \"\"\"
-            Application configuration is invalid:
-            
-            \#{formatted}
-            
-            Please fix these issues before starting the application.
-            \"\"\"
-        end
-      end
-
-  ### Test Data Validation
-      # Validate test fixtures to ensure they match expected schemas
-      def validate_fixture!(fixture_data, schema) do
-        case ExJsonschema.validate(schema, fixture_data) do
-          :ok -> fixture_data
-          
-          {:error, errors} ->
-            summary = ExJsonschema.analyze_errors(errors, :summary)
-            flunk("Test fixture validation failed:\\\\n\#{summary}")
-        end
-      end
-
-  For comprehensive examples and integration patterns, see the 
-  `test/examples/` directory which contains 28+ working examples 
-  covering all error handling scenarios.
-
-  ## Logging Configuration
-
-  ExJsonschema provides comprehensive structured logging to help with debugging,
-  monitoring, and observability. Logging can be configured per environment:
-
-  ### Development Configuration (config/dev.exs)
-      # Balanced logging for development (good for benchmarks)
-      config :logger, level: :info
-      
-      config :logger, :console,
-        format: "$time $metadata[$level] $message\\n",
-        metadata: [:error_count, :schema_size, :instance_size, :format]
-      
-      # ExJsonschema-specific settings
-      config :ex_jsonschema,
-        log_level: :info,
-        log_compilation_time: true,
-        log_validation_time: true,
-        log_error_details: true
-      
-      # For detailed debugging, temporarily use:
-      # config :logger, level: :debug
-
-  ### Production Configuration (config/prod.exs)
-      # Only log warnings and errors in production
-      config :logger, level: :warning
-      
-      config :logger, :console,
-        format: "$time $metadata[$level] $message\\n",
-        metadata: [:request_id, :error_count]
-      
-      # Minimal logging for production performance
-      config :ex_jsonschema,
-        log_level: :warning,
-        log_compilation_time: false,
-        log_validation_time: false,
-        log_error_details: false
-
-  ### Log Output Examples
-
-  When enabled, ExJsonschema logs provide detailed insights:
-
-      # Schema compilation logs
-      14:23:15.123 [info] Schema compilation successful schema_size=256 draft=draft7
-      
-      # Validation logs
-      14:23:15.125 [debug] Starting validation instance_size=128 output_format=detailed
-      14:23:15.126 [debug] Validation failed with errors error_count=2 output_format=detailed
-      
-      # Error analysis logs  
-      14:23:15.130 [info] Error analysis complete error_count=2 recommendation_count=3
-      
-      # Error formatting logs
-      14:23:15.132 [info] Error formatting complete error_count=2 format=human output_size=512
-
-  These logs help track performance, identify validation patterns, and debug issues
-  in both development and production environments.
-
-  ## Features
-
-  - High-performance validation using Rust (1.4M-1.9M validations/second)
-  - Support for JSON Schema draft-04, draft-06, draft-07, draft 2019-09, and draft 2020-12
-  - **Draft-specific compilation shortcuts** for optimal performance and accuracy
-  - Multiple output formats: basic (fastest), detailed (default), verbose (comprehensive)
-  - Configurable validation options for format validation, error handling, and annotations
-  - Both keyword list and Options struct interfaces
-  - Detailed error messages with path information and suggestions
-  - Built-in performance benchmarking via `mix benchmark`
-  - Precompiled binaries for easy installation
-  - Zero Rust toolchain required for end users
-
+  Built on the blazing-fast Rust `jsonschema` crate for optimal performance.
   """
 
   require Logger
@@ -484,6 +87,7 @@ defmodule ExJsonschema do
     DraftDetector,
     ErrorAnalyzer,
     ErrorFormatter,
+    MetaValidator,
     Native,
     Options,
     ValidationError
@@ -1139,6 +743,90 @@ defmodule ExJsonschema do
     ErrorAnalyzer.summarize(errors)
   end
 
+  # Meta-validation functions
+
+  @doc """
+  Checks if a JSON Schema document is valid against its meta-schema.
+
+  This function validates that the provided schema document itself follows
+  the correct JSON Schema specification for its draft version.
+
+  ## Examples
+
+      iex> schema = ~s({"type": "string", "minLength": 5})
+      iex> ExJsonschema.meta_valid?(schema)
+      true
+      
+      iex> invalid_schema = ~s({"type": "invalid_type"})
+      iex> ExJsonschema.meta_valid?(invalid_schema)
+      false
+
+  ## Parameters
+
+  - `schema_json` - JSON string containing the schema to validate
+
+  ## Returns
+
+  - `true` if the schema is valid against its meta-schema
+  - `false` if the schema is invalid
+  - Raises `ArgumentError` if JSON is malformed
+  """
+  @spec meta_valid?(binary()) :: boolean()
+  defdelegate meta_valid?(schema_json), to: MetaValidator, as: :valid?
+
+  @doc """
+  Validates a JSON Schema document against its meta-schema.
+
+  Returns detailed validation errors compatible with standard validation error
+  formatting and analysis tools.
+
+  ## Examples
+
+      iex> schema = ~s({"type": "string", "minLength": 5})
+      iex> ExJsonschema.meta_validate(schema)
+      :ok
+      
+      iex> invalid_schema = ~s({"type": "invalid_type"})
+      iex> {:error, errors} = ExJsonschema.meta_validate(invalid_schema)
+      iex> ExJsonschema.format_errors(errors, :human)
+
+  ## Parameters
+
+  - `schema_json` - JSON string containing the schema to validate
+
+  ## Returns
+
+  - `:ok` if the schema is valid
+  - `{:error, [ExJsonschema.ValidationError.t()]}` if validation fails
+  - `{:error, reason}` if JSON parsing fails
+  """
+  @spec meta_validate(binary()) :: :ok | {:error, [ValidationError.t()]} | {:error, binary()}
+  defdelegate meta_validate(schema_json), to: MetaValidator, as: :validate
+
+  @doc """
+  Validates a JSON Schema document against its meta-schema, raising on error.
+
+  Like `meta_validate/1` but raises `ExJsonschema.ValidationError` if validation fails.
+
+  ## Examples
+
+      iex> schema = ~s({"type": "string", "minLength": 5})
+      iex> ExJsonschema.meta_validate!(schema)
+      :ok
+
+  ## Parameters
+
+  - `schema_json` - JSON string containing the schema to validate
+
+  ## Returns
+
+  - `:ok` if the schema is valid
+  - Raises `ExJsonschema.ValidationError` if validation fails
+  - Raises `ArgumentError` if JSON is malformed
+  """
+  @spec meta_validate!(binary()) :: :ok
+  defdelegate meta_validate!(schema_json), to: MetaValidator, as: :validate!
+
   # Private helper functions for validation options
 
   defp validate_and_normalize_options(opts) do
@@ -1332,6 +1020,7 @@ defmodule ExJsonschema do
 
             _ ->
               Logger.warning("Unknown draft, falling back to generic compilation", %{draft: draft})
+
               # Fallback to generic compilation
               Native.compile_schema(schema_json)
           end

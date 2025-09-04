@@ -770,4 +770,174 @@ fn generate_suggestions_for_error(
     }
 }
 
+// Meta-validation functions
+#[rustler::nif]
+fn meta_is_valid(env: Env, schema_json: String) -> Term {
+    let schema_value: Value = match serde_json::from_str(&schema_json) {
+        Ok(value) => value,
+        Err(e) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "json_parse_error".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), "Invalid JSON".encode(env))
+                .unwrap()
+                .map_put("details".encode(env), format!("Failed to parse JSON: {}", e).encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+    };
+
+    // Use jsonschema::meta::is_valid to check if schema is valid
+    // Handle potential panic with catch_unwind
+    let result = std::panic::catch_unwind(|| {
+        jsonschema::meta::is_valid(&schema_value)
+    });
+    
+    match result {
+        Ok(is_valid) => (atoms::ok(), is_valid).encode(env),
+        Err(_) => {
+            // If panic occurred, assume invalid schema
+            (atoms::ok(), false).encode(env)
+        }
+    }
+}
+
+#[rustler::nif]
+fn meta_validate(env: Env, schema_json: String) -> Term {
+    let schema_value: Value = match serde_json::from_str(&schema_json) {
+        Ok(value) => value,
+        Err(e) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "json_parse_error".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), "Invalid JSON".encode(env))
+                .unwrap()
+                .map_put("details".encode(env), format!("Failed to parse JSON: {}", e).encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+    };
+
+    // Use jsonschema::meta::validate to get detailed validation results
+    // Handle potential panic with catch_unwind
+    let result = std::panic::catch_unwind(|| {
+        jsonschema::meta::validate(&schema_value)
+    });
+    
+    match result {
+        Ok(Ok(_)) => atoms::ok().encode(env),
+        Ok(Err(error)) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "meta_validation_error".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), "Schema meta-validation failed".encode(env))
+                .unwrap()
+                .map_put("details".encode(env), error.to_string().encode(env))
+                .unwrap();
+            (atoms::error(), error_map).encode(env)
+        }
+        Err(_) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "meta_validation_error".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), "Meta-validation not supported for this schema format".encode(env))
+                .unwrap()
+                .map_put("details".encode(env), "Unknown or unsupported $schema specification".encode(env))
+                .unwrap();
+            (atoms::error(), error_map).encode(env)
+        }
+    }
+}
+
+#[rustler::nif]
+fn meta_validate_detailed(env: Env, schema_json: String) -> Term {
+    let schema_value: Value = match serde_json::from_str(&schema_json) {
+        Ok(value) => value,
+        Err(e) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "json_parse_error".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), "Invalid JSON".encode(env))
+                .unwrap()
+                .map_put("details".encode(env), format!("Failed to parse JSON: {}", e).encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+    };
+
+    // Try to compile as a validator to get detailed meta-validation errors
+    let compilation_result = std::panic::catch_unwind(|| {
+        jsonschema::validator_for(&schema_value)
+    });
+    
+    match compilation_result {
+        Ok(Ok(_validator)) => {
+            // Schema is valid for compilation, now check meta-validation
+            let meta_result = std::panic::catch_unwind(|| {
+                jsonschema::meta::validate(&schema_value)
+            });
+            
+            match meta_result {
+                Ok(Ok(_)) => atoms::ok().encode(env),
+                Ok(Err(error)) => {
+                    // Create a detailed error response
+                    let error_details = rustler::types::map::map_new(env)
+                        .map_put("instance_path".encode(env), "".encode(env))
+                        .unwrap()
+                        .map_put("schema_path".encode(env), "".encode(env))
+                        .unwrap()
+                        .map_put("message".encode(env), error.to_string().encode(env))
+                        .unwrap()
+                        .map_put("keyword".encode(env), "meta".encode(env))
+                        .unwrap();
+                    
+                    (atoms::error(), vec![error_details]).encode(env)
+                }
+                Err(_) => {
+                    // Meta-validation panicked (unsupported $schema)
+                    let error_details = rustler::types::map::map_new(env)
+                        .map_put("instance_path".encode(env), "".encode(env))
+                        .unwrap()
+                        .map_put("schema_path".encode(env), "".encode(env))
+                        .unwrap()
+                        .map_put("message".encode(env), "Meta-validation not supported for this schema format".encode(env))
+                        .unwrap()
+                        .map_put("keyword".encode(env), "meta".encode(env))
+                        .unwrap();
+                    
+                    (atoms::error(), vec![error_details]).encode(env)
+                }
+            }
+        }
+        Ok(Err(compilation_error)) => {
+            // Schema has compilation errors, create detailed error response
+            let error_details = rustler::types::map::map_new(env)
+                .map_put("instance_path".encode(env), "".encode(env))
+                .unwrap()
+                .map_put("schema_path".encode(env), "".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), compilation_error.to_string().encode(env))
+                .unwrap()
+                .map_put("keyword".encode(env), "compilation".encode(env))
+                .unwrap();
+            
+            (atoms::error(), vec![error_details]).encode(env)
+        }
+        Err(_) => {
+            // Compilation panicked
+            let error_details = rustler::types::map::map_new(env)
+                .map_put("instance_path".encode(env), "".encode(env))
+                .unwrap()
+                .map_put("schema_path".encode(env), "".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), "Schema compilation failed due to unsupported format".encode(env))
+                .unwrap()
+                .map_put("keyword".encode(env), "compilation".encode(env))
+                .unwrap();
+            
+            (atoms::error(), vec![error_details]).encode(env)
+        }
+    }
+}
+
 rustler::init!("Elixir.ExJsonschema.Native");

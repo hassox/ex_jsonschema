@@ -46,4 +46,9 @@ defmodule ExJsonschema.Native do
 
   # Draft detection
   def detect_draft_from_schema(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Meta-validation
+  def meta_is_valid(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
+  def meta_validate(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
+  def meta_validate_detailed(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
 end

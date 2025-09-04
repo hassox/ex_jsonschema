@@ -3,6 +3,18 @@ defmodule ExJsonschema.ValidationError do
   Represents a JSON Schema validation error with detailed path and message information.
   """
 
+  defexception [
+    :instance_path,
+    :schema_path,
+    :message,
+    :keyword,
+    :instance_value,
+    :schema_value,
+    :context,
+    :annotations,
+    :suggestions
+  ]
+
   @type t :: %__MODULE__{
           instance_path: String.t(),
           schema_path: String.t(),
@@ -14,18 +26,6 @@ defmodule ExJsonschema.ValidationError do
           annotations: map() | nil,
           suggestions: [String.t()] | nil
         }
-
-  defstruct [
-    :instance_path,
-    :schema_path,
-    :message,
-    :keyword,
-    :instance_value,
-    :schema_value,
-    :context,
-    :annotations,
-    :suggestions
-  ]
 
   @doc """
   Creates a ValidationError from a map returned by the NIF.
@@ -81,6 +81,13 @@ defmodule ExJsonschema.ValidationError do
     def inspect(%ExJsonschema.ValidationError{} = error, _opts) do
       "#ValidationError<#{error.instance_path}: #{error.message}>"
     end
+  end
+
+  @doc """
+  Returns a formatted error message for the exception.
+  """
+  def message(%__MODULE__{instance_path: path, message: msg}) do
+    "JSON Schema validation failed: #{msg} at #{path}"
   end
 end
 

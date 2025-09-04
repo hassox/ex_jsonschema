@@ -80,7 +80,6 @@ jobs:
           LIB_EXTENSION="so"
           case ${{ matrix.job.target }} in
             *-pc-windows-*) LIB_EXTENSION="dll" ;;
-            *-apple-darwin) LIB_EXTENSION="dylib" ;;
           esac
           
           BUILT_LIB="target/${{ matrix.job.target }}/release/${LIB_PREFIX}ex_jsonschema.${LIB_EXTENSION}"
@@ -98,7 +97,6 @@ jobs:
           LIB_EXTENSION="so"
           case ${{ matrix.job.target }} in
             *-pc-windows-*) LIB_EXTENSION="dll" ;;
-            *-apple-darwin) LIB_EXTENSION="dylib" ;;
           esac
           
           ARCHIVE_NAME="libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.${LIB_EXTENSION}.tar.gz"

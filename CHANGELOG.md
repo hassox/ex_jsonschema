@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2024-12-17
+
+### Fixed
+
+- Fixed precompiled NIF file extension for macOS targets - now correctly uses `.so` instead of `.dylib` to match Erlang/OTP conventions
+- Updated release workflow to generate correct file names for macOS precompiled binaries
+
 ## [0.1.0] - 2024-12-17
 
 ### Added
@@ -35,5 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Supports multiple architectures: x86_64 and aarch64 for macOS, Linux, and Windows
 - Optimized for performance with compile-once, validate-many pattern
 
-[Unreleased]: https://github.com/hassox/ex_jsonschema/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/hassox/ex_jsonschema/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/hassox/ex_jsonschema/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/hassox/ex_jsonschema/releases/tag/v0.1.0 

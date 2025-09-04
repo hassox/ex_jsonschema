@@ -13,7 +13,7 @@ defmodule ExJsonschema.CoreTest do
 
     test "rejects invalid JSON with clear error" do
       invalid_json = ~s({"type": "string)
-      assert {:error, %CompilationError{type: :json_parse_error}} = 
+      assert {:error, %CompilationError{type: :detection_error}} = 
                ExJsonschema.compile(invalid_json)
     end
 

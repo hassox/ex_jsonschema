@@ -12,6 +12,13 @@ mod atoms {
         compilation_error,
         validation_error,
         json_parse_error,
+        // Draft versions
+        auto,
+        draft4,
+        draft6,
+        draft7,
+        draft201909,
+        draft202012,
     }
 }
 
@@ -185,6 +192,41 @@ fn valid(compiled_schema: ResourceArc<CompiledSchema>, instance_json: String) ->
     let instance_value: Value = serde_json::from_str(&instance_json).unwrap_or(Value::Null);
 
     compiled_schema.is_valid(&instance_value)
+}
+
+#[rustler::nif]
+fn detect_draft_from_schema(env: Env, schema_json: String) -> Term {
+    let schema_value: Value = match serde_json::from_str(&schema_json) {
+        Ok(value) => value,
+        Err(e) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "json_parse_error".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), "Invalid JSON".encode(env))
+                .unwrap()
+                .map_put("details".encode(env), format!("Failed to parse JSON: {}", e).encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+    };
+
+    // Try to detect draft from $schema property
+    if let Some(schema_url) = schema_value.get("$schema") {
+        if let Some(url_str) = schema_url.as_str() {
+            let draft = match url_str {
+                url if url.contains("draft-04") || url.contains("draft/04") => atoms::draft4(),
+                url if url.contains("draft-06") || url.contains("draft/06") => atoms::draft6(),
+                url if url.contains("draft-07") || url.contains("draft/07") => atoms::draft7(),
+                url if url.contains("2019-09") => atoms::draft201909(),
+                url if url.contains("2020-12") => atoms::draft202012(),
+                _ => atoms::draft202012(), // Default to latest
+            };
+            return (atoms::ok(), draft).encode(env);
+        }
+    }
+
+    // Default to latest draft if no $schema or unrecognized
+    (atoms::ok(), atoms::draft202012()).encode(env)
 }
 
 rustler::init!("Elixir.ExJsonschema.Native");

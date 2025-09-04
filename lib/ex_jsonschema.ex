@@ -29,7 +29,7 @@ defmodule ExJsonschema do
 
   """
 
-  alias ExJsonschema.{CompilationError, Native, ValidationError}
+  alias ExJsonschema.{CompilationError, DraftDetector, Native, Options, ValidationError}
 
   @type compiled_schema :: reference()
   @type json_string :: String.t()
@@ -59,22 +59,41 @@ defmodule ExJsonschema do
 
   ## Options
 
-  Currently options are accepted but ignored for forward compatibility.
-  Future versions will support configuration options.
+  Accepts either an `ExJsonschema.Options` struct or keyword list of options.
+  When using `:auto` draft detection, the `$schema` property in the schema
+  will be examined to determine the appropriate JSON Schema draft version.
 
   ## Examples
 
+      # With Options struct
+      iex> opts = ExJsonschema.Options.new(draft: :draft7, validate_formats: true)
       iex> schema = ~s({"type": "string"})
-      iex> {:ok, compiled} = ExJsonschema.compile(schema, [])
+      iex> {:ok, compiled} = ExJsonschema.compile(schema, opts)
+      iex> is_reference(compiled)
+      true
+
+      # With keyword list
+      iex> schema = ~s({"type": "string"})
+      iex> {:ok, compiled} = ExJsonschema.compile(schema, draft: :auto)
+      iex> is_reference(compiled)
+      true
+
+      # Automatic draft detection
+      iex> schema_with_draft = ~s({"$schema": "http://json-schema.org/draft-07/schema#", "type": "string"})
+      iex> {:ok, compiled} = ExJsonschema.compile(schema_with_draft, draft: :auto)
       iex> is_reference(compiled)
       true
 
   """
-  @spec compile(json_string(), keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
-  def compile(schema_json, _options) when is_binary(schema_json) do
-    case Native.compile_schema(schema_json) do
-      {:ok, compiled} -> {:ok, compiled}
-      {:error, error_map} -> {:error, CompilationError.from_map(error_map)}
+  @spec compile(json_string(), Options.t() | keyword()) :: {:ok, compiled_schema()} | {:error, CompilationError.t()}
+  def compile(schema_json, %Options{} = options) when is_binary(schema_json) do
+    compile_with_options(schema_json, options)
+  end
+
+  def compile(schema_json, options) when is_binary(schema_json) and is_list(options) do
+    case Options.validate(Options.new(options)) do
+      {:ok, validated_options} -> compile_with_options(schema_json, validated_options)
+      {:error, reason} -> {:error, CompilationError.from_options_error(reason)}
     end
   end
 
@@ -191,6 +210,80 @@ defmodule ExJsonschema do
   def validate_once(schema_json, instance_json) do
     with {:ok, compiled} <- compile(schema_json) do
       validate(compiled, instance_json)
+    end
+  end
+
+  @doc """
+  Detects the JSON Schema draft version from a schema document.
+
+  This function examines the `$schema` property to determine which JSON Schema
+  draft version the schema is written for. If no `$schema` is present or the
+  URL is unrecognized, it returns the default draft (2020-12).
+
+  ## Examples
+
+      # Schema with explicit draft
+      iex> schema = ~s({"$schema": "http://json-schema.org/draft-07/schema#", "type": "string"})
+      iex> ExJsonschema.detect_draft(schema)
+      {:ok, :draft7}
+
+      # Schema without $schema (uses default)
+      iex> schema = ~s({"type": "number"})
+      iex> ExJsonschema.detect_draft(schema)
+      {:ok, :draft202012}
+
+      # Map input
+      iex> schema = %{"$schema" => "https://json-schema.org/draft/2020-12/schema", "type" => "object"}
+      iex> ExJsonschema.detect_draft(schema)
+      {:ok, :draft202012}
+
+  """
+  @spec detect_draft(json_string() | map()) :: {:ok, Options.draft()} | {:error, String.t()}
+  def detect_draft(schema) do
+    DraftDetector.detect_draft(schema)
+  end
+
+  @doc """
+  Returns all supported JSON Schema draft versions.
+
+  ## Examples
+
+      iex> drafts = ExJsonschema.supported_drafts()
+      iex> :draft7 in drafts
+      true
+      iex> :draft202012 in drafts
+      true
+
+  """
+  @spec supported_drafts() :: [Options.draft()]
+  def supported_drafts do
+    DraftDetector.supported_drafts()
+  end
+
+  # Private functions
+
+  defp compile_with_options(schema_json, %Options{draft: :auto} = options) do
+    # Auto-detect draft from schema and update options
+    case DraftDetector.detect_draft(schema_json) do
+      {:ok, detected_draft} ->
+        updated_options = %{options | draft: detected_draft}
+        compile_with_native_options(schema_json, updated_options)
+
+      {:error, reason} ->
+        {:error, CompilationError.from_detection_error(reason)}
+    end
+  end
+
+  defp compile_with_options(schema_json, %Options{} = options) do
+    compile_with_native_options(schema_json, options)
+  end
+
+  defp compile_with_native_options(schema_json, %Options{} = _options) do
+    # TODO: For M1.3, we're using the simple compile_schema that uses auto-detection
+    # M1.4 will implement the full options-aware compilation
+    case Native.compile_schema(schema_json) do
+      {:ok, compiled} -> {:ok, compiled}
+      {:error, error_map} -> {:error, CompilationError.from_map(error_map)}
     end
   end
 end

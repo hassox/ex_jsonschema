@@ -205,7 +205,12 @@ defmodule ExJsonschema.ValidationOptionsTest do
       instance = ~s("valid")
 
       # Should still work despite deprecated options (warnings are logged but not tested here)
-      result = ExJsonschema.validate(validator, instance, validate_formats: true, stop_on_first_error: true)
+      result =
+        ExJsonschema.validate(validator, instance,
+          validate_formats: true,
+          stop_on_first_error: true
+        )
+
       assert :ok = result
     end
   end

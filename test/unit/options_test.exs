@@ -91,7 +91,6 @@ defmodule ExJsonschema.OptionsTest do
 
       assert {:error, "Invalid output format: :invalid_format"} = Options.validate(opts)
     end
-
   end
 
   describe "option combinations" do

@@ -64,7 +64,6 @@ defmodule ExJsonschema.Options do
   """
   @type output_format :: :basic | :detailed | :verbose
 
-
   defstruct [
     # Draft specification
     draft: :auto,

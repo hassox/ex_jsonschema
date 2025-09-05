@@ -833,7 +833,13 @@ defmodule ExJsonschema do
   defp validate_and_normalize_options(opts) do
     # Only accept output format at validation time
     valid_options = [:output]
-    deprecated_options = [:validate_formats, :ignore_unknown_formats, :stop_on_first_error, :collect_annotations]
+
+    deprecated_options = [
+      :validate_formats,
+      :ignore_unknown_formats,
+      :stop_on_first_error,
+      :collect_annotations
+    ]
 
     # Check for invalid options
     invalid_opts = Keyword.keys(opts) -- (valid_options ++ deprecated_options)
@@ -847,7 +853,9 @@ defmodule ExJsonschema do
     # Warn about deprecated options
     for opt <- deprecated_options do
       if Keyword.has_key?(opts, opt) do
-        Logger.warning("Option #{inspect(opt)} ignored at validation time. Set during compilation with ExJsonschema.compile/2 instead.")
+        Logger.warning(
+          "Option #{inspect(opt)} ignored at validation time. Set during compilation with ExJsonschema.compile/2 instead."
+        )
       end
     end
 

@@ -101,9 +101,9 @@ defmodule ExJsonschema.MixProject do
       source_url: @source_url,
       formatters: ["html"],
       groups_for_extras: [
-        "Guides": [
+        Guides: [
           "docs/guides/getting_started.md",
-          "docs/guides/advanced_features.md", 
+          "docs/guides/advanced_features.md",
           "docs/guides/streaming_validation.md",
           "docs/guides/performance_production.md"
         ]

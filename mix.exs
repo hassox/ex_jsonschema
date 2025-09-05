@@ -89,6 +89,10 @@ defmodule ExJsonschema.MixProject do
     [
       extras: [
         "README.md": [title: "Overview"],
+        "docs/guides/getting_started.md": [title: "Getting Started"],
+        "docs/guides/advanced_features.md": [title: "Advanced Features"],
+        "docs/guides/streaming_validation.md": [title: "Streaming Validation"],
+        "docs/guides/performance_production.md": [title: "Performance & Production"],
         "CHANGELOG.md": [title: "Changelog"],
         LICENSE: [title: "License"]
       ],
@@ -96,6 +100,14 @@ defmodule ExJsonschema.MixProject do
       source_ref: "v#{@version}",
       source_url: @source_url,
       formatters: ["html"],
+      groups_for_extras: [
+        "Guides": [
+          "docs/guides/getting_started.md",
+          "docs/guides/advanced_features.md", 
+          "docs/guides/streaming_validation.md",
+          "docs/guides/performance_production.md"
+        ]
+      ],
       groups_for_modules: [
         Core: [ExJsonschema],
         Configuration: [ExJsonschema.Options, ExJsonschema.Profile],

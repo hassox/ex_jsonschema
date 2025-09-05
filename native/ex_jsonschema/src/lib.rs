@@ -1,7 +1,7 @@
 use rustler::{Atom, Encoder, Env, ResourceArc, Term};
 use serde_json::Value;
-use std::panic::AssertUnwindSafe;
 use std::collections::HashMap;
+use std::panic::AssertUnwindSafe;
 use thiserror::Error;
 
 mod atoms {
@@ -113,7 +113,10 @@ impl CompiledSchema {
         })
     }
 
-    fn new_with_options(schema: Value, options: ValidationOptionsStruct) -> Result<Self, JsonSchemaError> {
+    fn new_with_options(
+        schema: Value,
+        options: ValidationOptionsStruct,
+    ) -> Result<Self, JsonSchemaError> {
         // Start with the jsonschema::options() builder
         let mut builder = jsonschema::options();
 
@@ -142,19 +145,16 @@ impl CompiledSchema {
         // Configure regex engine for security
         if options.regex_engine == atoms::regex() {
             // Use safer regex engine
-            builder = builder.with_pattern_options(
-                jsonschema::PatternOptions::regex()
-            );
+            builder = builder.with_pattern_options(jsonschema::PatternOptions::regex());
         } else {
-            // Use fancy_regex with security limits  
+            // Use fancy_regex with security limits
             builder = builder.with_pattern_options(
-                jsonschema::PatternOptions::fancy_regex()
-                    .backtrack_limit(10_000)
+                jsonschema::PatternOptions::fancy_regex().backtrack_limit(10_000),
             );
         }
 
         // All supported options are now implemented above.
-        // External reference resolution, annotation collection, and 
+        // External reference resolution, annotation collection, and
         // stop-on-first-error are not supported by jsonschema 0.33
 
         // Build the validator
@@ -172,7 +172,8 @@ impl CompiledSchema {
         if self.validator.is_valid(instance) {
             Ok(())
         } else {
-            let error_details: Vec<ValidationErrorDetail> = self.validator
+            let error_details: Vec<ValidationErrorDetail> = self
+                .validator
                 .iter_errors(instance)
                 .map(|error| ValidationErrorDetail {
                     instance_path: error.instance_path.to_string(),
@@ -189,14 +190,22 @@ impl CompiledSchema {
         if self.validator.is_valid(instance) {
             Ok(())
         } else {
-            let verbose_errors: Vec<VerboseValidationErrorDetail> = self.validator
+            let verbose_errors: Vec<VerboseValidationErrorDetail> = self
+                .validator
                 .iter_errors(instance)
                 .map(|error| {
                     let keyword = extract_keyword_from_error(&error);
-                    let (instance_value, schema_value) = extract_values_from_error(&error, instance, &self.schema);
-                    let context = build_error_context(&error, &instance_value, &schema_value, &keyword);
+                    let (instance_value, schema_value) =
+                        extract_values_from_error(&error, instance, &self.schema);
+                    let context =
+                        build_error_context(&error, &instance_value, &schema_value, &keyword);
                     let annotations = extract_annotations_from_error(&error, &self.schema);
-                    let suggestions = generate_suggestions_for_error(&error, &keyword, &instance_value, &schema_value);
+                    let suggestions = generate_suggestions_for_error(
+                        &error,
+                        &keyword,
+                        &instance_value,
+                        &schema_value,
+                    );
 
                     VerboseValidationErrorDetail {
                         instance_path: error.instance_path.to_string(),
@@ -411,7 +420,10 @@ fn detect_draft_from_schema(env: Env, schema_json: String) -> Term {
                 .unwrap()
                 .map_put("message".encode(env), "Invalid JSON".encode(env))
                 .unwrap()
-                .map_put("details".encode(env), format!("Failed to parse JSON: {}", e).encode(env))
+                .map_put(
+                    "details".encode(env),
+                    format!("Failed to parse JSON: {}", e).encode(env),
+                )
                 .unwrap();
             return (atoms::error(), error_map).encode(env);
         }
@@ -468,10 +480,8 @@ fn validate_verbose(
                             .unwrap();
                     }
 
-                    let suggestions_list: Vec<Term> = error.suggestions
-                        .iter()
-                        .map(|s| s.encode(env))
-                        .collect();
+                    let suggestions_list: Vec<Term> =
+                        error.suggestions.iter().map(|s| s.encode(env)).collect();
 
                     let error_map = rustler::types::map::map_new(env)
                         .map_put("instance_path".encode(env), error.instance_path.encode(env))
@@ -482,9 +492,15 @@ fn validate_verbose(
                         .unwrap()
                         .map_put("keyword".encode(env), error.keyword.encode(env))
                         .unwrap()
-                        .map_put("instance_value".encode(env), encode_json_value(env, &error.instance_value))
+                        .map_put(
+                            "instance_value".encode(env),
+                            encode_json_value(env, &error.instance_value),
+                        )
                         .unwrap()
-                        .map_put("schema_value".encode(env), encode_json_value(env, &error.schema_value))
+                        .map_put(
+                            "schema_value".encode(env),
+                            encode_json_value(env, &error.schema_value),
+                        )
                         .unwrap()
                         .map_put("context".encode(env), context_map)
                         .unwrap()
@@ -559,28 +575,31 @@ fn extract_keyword_from_error(error: &jsonschema::ValidationError) -> String {
     }
 }
 
-fn extract_values_from_error(error: &jsonschema::ValidationError, instance: &Value, schema: &Value) -> (Value, Value) {
+fn extract_values_from_error(
+    error: &jsonschema::ValidationError,
+    instance: &Value,
+    schema: &Value,
+) -> (Value, Value) {
     // Get the instance value at the error path
-    let instance_value = get_value_at_path(instance, &error.instance_path.to_string())
-        .unwrap_or(Value::Null);
-    
+    let instance_value =
+        get_value_at_path(instance, &error.instance_path.to_string()).unwrap_or(Value::Null);
+
     // Extract schema constraint value based on the keyword
     let schema_value = get_schema_constraint_value(error, schema);
-    
+
     (instance_value, schema_value)
 }
 
 fn get_schema_constraint_value(error: &jsonschema::ValidationError, schema: &Value) -> Value {
     let schema_path = error.schema_path.to_string();
     let keyword = extract_keyword_from_error(error);
-    
+
     // Navigate to the schema location where the constraint is defined
     if let Some(schema_location) = get_value_at_path(schema, &schema_path) {
         // For simple constraints, return the constraint value directly
         match keyword.as_str() {
-            "minimum" | "maximum" | "minLength" | "maxLength" | "minItems" | "maxItems" | "const" | "enum" | "multipleOf" => {
-                schema_location.clone()
-            }
+            "minimum" | "maximum" | "minLength" | "maxLength" | "minItems" | "maxItems"
+            | "const" | "enum" | "multipleOf" => schema_location.clone(),
             "type" => {
                 // Navigate up one level to get the type constraint
                 let parent_path = schema_path.rsplitn(2, '/').nth(1).unwrap_or("");
@@ -611,7 +630,7 @@ fn get_schema_constraint_value(error: &jsonschema::ValidationError, schema: &Val
                 }
                 Value::Array(vec![])
             }
-            _ => Value::String(format!("constraint: {}", keyword))
+            _ => Value::String(format!("constraint: {}", keyword)),
         }
     } else {
         Value::String("unknown constraint".to_string())
@@ -622,10 +641,10 @@ fn get_value_at_path(value: &Value, path: &str) -> Option<Value> {
     if path.is_empty() || path == "/" {
         return Some(value.clone());
     }
-    
+
     let segments: Vec<&str> = path.trim_start_matches('/').split('/').collect();
     let mut current = value;
-    
+
     for segment in segments {
         match current {
             Value::Object(obj) => {
@@ -641,7 +660,7 @@ fn get_value_at_path(value: &Value, path: &str) -> Option<Value> {
             _ => return None,
         }
     }
-    
+
     Some(current.clone())
 }
 
@@ -652,92 +671,167 @@ fn build_error_context(
     keyword: &str,
 ) -> HashMap<String, Value> {
     let mut context = HashMap::new();
-    
+
     // Add instance path and schema path for reference
-    context.insert("instance_path".to_string(), Value::String(error.instance_path.to_string()));
-    context.insert("schema_path".to_string(), Value::String(error.schema_path.to_string()));
-    
+    context.insert(
+        "instance_path".to_string(),
+        Value::String(error.instance_path.to_string()),
+    );
+    context.insert(
+        "schema_path".to_string(),
+        Value::String(error.schema_path.to_string()),
+    );
+
     // Add expected and actual values based on error type
     match keyword {
         "type" => {
             context.insert("expected_type".to_string(), schema_value.clone());
-            context.insert("actual_type".to_string(), Value::String(
-                match instance_value {
-                    Value::String(_) => "string",
-                    Value::Number(_) => "number", 
-                    Value::Bool(_) => "boolean",
-                    Value::Array(_) => "array",
-                    Value::Object(_) => "object",
-                    Value::Null => "null",
-                }.to_string()
-            ));
-            context.insert("expected".to_string(), Value::String(format!("type: {}", schema_value)));
+            context.insert(
+                "actual_type".to_string(),
+                Value::String(
+                    match instance_value {
+                        Value::String(_) => "string",
+                        Value::Number(_) => "number",
+                        Value::Bool(_) => "boolean",
+                        Value::Array(_) => "array",
+                        Value::Object(_) => "object",
+                        Value::Null => "null",
+                    }
+                    .to_string(),
+                ),
+            );
+            context.insert(
+                "expected".to_string(),
+                Value::String(format!("type: {}", schema_value)),
+            );
             context.insert("actual".to_string(), instance_value.clone());
         }
         "minimum" => {
             context.insert("minimum_value".to_string(), schema_value.clone());
             context.insert("actual_value".to_string(), instance_value.clone());
-            context.insert("expected".to_string(), Value::String(format!("value >= {}", schema_value)));
+            context.insert(
+                "expected".to_string(),
+                Value::String(format!("value >= {}", schema_value)),
+            );
             context.insert("actual".to_string(), instance_value.clone());
         }
         "maximum" => {
             context.insert("maximum_value".to_string(), schema_value.clone());
             context.insert("actual_value".to_string(), instance_value.clone());
-            context.insert("expected".to_string(), Value::String(format!("value <= {}", schema_value)));
+            context.insert(
+                "expected".to_string(),
+                Value::String(format!("value <= {}", schema_value)),
+            );
             context.insert("actual".to_string(), instance_value.clone());
         }
         "minLength" => {
             let actual_length = if let Value::String(s) = instance_value {
                 s.len()
-            } else { 0 };
+            } else {
+                0
+            };
             context.insert("minimum_length".to_string(), schema_value.clone());
-            context.insert("actual_length".to_string(), Value::Number(actual_length.into()));
-            context.insert("expected".to_string(), Value::String(format!("length >= {}", schema_value)));
-            context.insert("actual".to_string(), Value::String(format!("length: {}", actual_length)));
+            context.insert(
+                "actual_length".to_string(),
+                Value::Number(actual_length.into()),
+            );
+            context.insert(
+                "expected".to_string(),
+                Value::String(format!("length >= {}", schema_value)),
+            );
+            context.insert(
+                "actual".to_string(),
+                Value::String(format!("length: {}", actual_length)),
+            );
         }
         "maxLength" => {
             let actual_length = if let Value::String(s) = instance_value {
                 s.len()
-            } else { 0 };
+            } else {
+                0
+            };
             context.insert("maximum_length".to_string(), schema_value.clone());
-            context.insert("actual_length".to_string(), Value::Number(actual_length.into()));
-            context.insert("expected".to_string(), Value::String(format!("length <= {}", schema_value)));
-            context.insert("actual".to_string(), Value::String(format!("length: {}", actual_length)));
+            context.insert(
+                "actual_length".to_string(),
+                Value::Number(actual_length.into()),
+            );
+            context.insert(
+                "expected".to_string(),
+                Value::String(format!("length <= {}", schema_value)),
+            );
+            context.insert(
+                "actual".to_string(),
+                Value::String(format!("length: {}", actual_length)),
+            );
         }
         "pattern" => {
             context.insert("pattern".to_string(), schema_value.clone());
             context.insert("value".to_string(), instance_value.clone());
-            context.insert("expected".to_string(), Value::String(format!("match pattern: {}", schema_value)));
+            context.insert(
+                "expected".to_string(),
+                Value::String(format!("match pattern: {}", schema_value)),
+            );
             context.insert("actual".to_string(), instance_value.clone());
         }
         "required" => {
             context.insert("required_properties".to_string(), schema_value.clone());
-            context.insert("expected".to_string(), Value::String("all required properties present".to_string()));
-            context.insert("actual".to_string(), Value::String("missing required property".to_string()));
+            context.insert(
+                "expected".to_string(),
+                Value::String("all required properties present".to_string()),
+            );
+            context.insert(
+                "actual".to_string(),
+                Value::String("missing required property".to_string()),
+            );
         }
         "minItems" | "maxItems" => {
             let actual_length = if let Value::Array(arr) = instance_value {
                 arr.len()
-            } else { 0 };
-            context.insert(format!("{}_items", if keyword == "minItems" { "minimum" } else { "maximum" }).to_string(), schema_value.clone());
-            context.insert("actual_items".to_string(), Value::Number(actual_length.into()));
+            } else {
+                0
+            };
+            context.insert(
+                format!(
+                    "{}_items",
+                    if keyword == "minItems" {
+                        "minimum"
+                    } else {
+                        "maximum"
+                    }
+                )
+                .to_string(),
+                schema_value.clone(),
+            );
+            context.insert(
+                "actual_items".to_string(),
+                Value::Number(actual_length.into()),
+            );
             let op = if keyword == "minItems" { ">=" } else { "<=" };
-            context.insert("expected".to_string(), Value::String(format!("items {} {}", op, schema_value)));
+            context.insert(
+                "expected".to_string(),
+                Value::String(format!("items {} {}", op, schema_value)),
+            );
             context.insert("actual".to_string(), instance_value.clone()); // Use actual array value
         }
         _ => {
             context.insert("constraint".to_string(), schema_value.clone());
-            context.insert("expected".to_string(), Value::String("constraint satisfied".to_string()));
+            context.insert(
+                "expected".to_string(),
+                Value::String("constraint satisfied".to_string()),
+            );
             context.insert("actual".to_string(), instance_value.clone());
         }
     }
-    
+
     context
 }
 
-fn extract_annotations_from_error(error: &jsonschema::ValidationError, schema: &Value) -> HashMap<String, Value> {
+fn extract_annotations_from_error(
+    error: &jsonschema::ValidationError,
+    schema: &Value,
+) -> HashMap<String, Value> {
     let mut annotations = HashMap::new();
-    
+
     // Get the schema location where the error occurred
     let schema_path = error.schema_path.to_string();
     if let Some(schema_location) = get_value_at_path(schema, &schema_path) {
@@ -747,24 +841,24 @@ fn extract_annotations_from_error(error: &jsonschema::ValidationError, schema: &
             if let Some(title) = schema_obj.get("title") {
                 annotations.insert("title".to_string(), title.clone());
             }
-            
-            // Add description annotation if present  
+
+            // Add description annotation if present
             if let Some(description) = schema_obj.get("description") {
                 annotations.insert("description".to_string(), description.clone());
             }
-            
+
             // Add examples if present
             if let Some(examples) = schema_obj.get("examples") {
                 annotations.insert("examples".to_string(), examples.clone());
             }
-            
+
             // Add default value if present
             if let Some(default) = schema_obj.get("default") {
                 annotations.insert("default".to_string(), default.clone());
             }
         }
     }
-    
+
     // For parent schema annotations, check one level up
     let parent_path = schema_path.rsplitn(2, '/').nth(1).unwrap_or("");
     if !parent_path.is_empty() {
@@ -775,24 +869,31 @@ fn extract_annotations_from_error(error: &jsonschema::ValidationError, schema: &
                     annotations.insert("parent_title".to_string(), parent_title.clone());
                 }
                 if let Some(parent_description) = parent_obj.get("description") {
-                    annotations.insert("parent_description".to_string(), parent_description.clone());
+                    annotations
+                        .insert("parent_description".to_string(), parent_description.clone());
                 }
             }
         }
     }
-    
+
     // Add error location metadata
-    annotations.insert("error_keyword".to_string(), Value::String(extract_keyword_from_error(error)));
-    annotations.insert("validation_failed_at".to_string(), Value::String(error.instance_path.to_string()));
-    
+    annotations.insert(
+        "error_keyword".to_string(),
+        Value::String(extract_keyword_from_error(error)),
+    );
+    annotations.insert(
+        "validation_failed_at".to_string(),
+        Value::String(error.instance_path.to_string()),
+    );
+
     annotations
 }
 
 fn generate_suggestions_for_error(
-    error: &jsonschema::ValidationError, 
-    keyword: &str, 
-    _instance_value: &Value, 
-    schema_value: &Value
+    error: &jsonschema::ValidationError,
+    keyword: &str,
+    _instance_value: &Value,
+    schema_value: &Value,
 ) -> Vec<String> {
     match keyword {
         "type" => {
@@ -801,8 +902,14 @@ fn generate_suggestions_for_error(
         }
         "minimum" => vec![format!("Value must be >= {}", schema_value)],
         "maximum" => vec![format!("Value must be <= {}", schema_value)],
-        "minLength" => vec![format!("String must be at least {} characters", schema_value)],
-        "maxLength" => vec![format!("String must be at most {} characters", schema_value)],
+        "minLength" => vec![format!(
+            "String must be at least {} characters",
+            schema_value
+        )],
+        "maxLength" => vec![format!(
+            "String must be at most {} characters",
+            schema_value
+        )],
         "pattern" => vec![format!("String must match pattern: {}", schema_value)],
         "format" => {
             let message = error.to_string();
@@ -825,17 +932,17 @@ fn generate_suggestions_for_error(
                 format!("Validation failed for '{}' constraint", keyword),
                 format!("Expected: {}", schema_value),
             ];
-            
+
             // Add generic troubleshooting advice
             suggestions.push("Check the schema documentation for this constraint".to_string());
             suggestions.push("Verify your data matches the expected format".to_string());
-            
+
             // If we can extract useful info from the error message, add it
             let message = error.to_string();
             if !message.is_empty() && message.len() < 200 {
                 suggestions.push(format!("Error details: {}", message));
             }
-            
+
             suggestions
         }
     }
@@ -852,7 +959,10 @@ fn meta_is_valid(env: Env, schema_json: String) -> Term {
                 .unwrap()
                 .map_put("message".encode(env), "Invalid JSON".encode(env))
                 .unwrap()
-                .map_put("details".encode(env), format!("Failed to parse JSON: {}", e).encode(env))
+                .map_put(
+                    "details".encode(env),
+                    format!("Failed to parse JSON: {}", e).encode(env),
+                )
                 .unwrap();
             return (atoms::error(), error_map).encode(env);
         }
@@ -860,10 +970,8 @@ fn meta_is_valid(env: Env, schema_json: String) -> Term {
 
     // Use jsonschema::meta::is_valid to check if schema is valid
     // Handle potential panic with catch_unwind
-    let result = std::panic::catch_unwind(|| {
-        jsonschema::meta::is_valid(&schema_value)
-    });
-    
+    let result = std::panic::catch_unwind(|| jsonschema::meta::is_valid(&schema_value));
+
     match result {
         Ok(is_valid) => (atoms::ok(), is_valid).encode(env),
         Err(_) => {
@@ -883,7 +991,10 @@ fn meta_validate(env: Env, schema_json: String) -> Term {
                 .unwrap()
                 .map_put("message".encode(env), "Invalid JSON".encode(env))
                 .unwrap()
-                .map_put("details".encode(env), format!("Failed to parse JSON: {}", e).encode(env))
+                .map_put(
+                    "details".encode(env),
+                    format!("Failed to parse JSON: {}", e).encode(env),
+                )
                 .unwrap();
             return (atoms::error(), error_map).encode(env);
         }
@@ -891,17 +1002,18 @@ fn meta_validate(env: Env, schema_json: String) -> Term {
 
     // Use jsonschema::meta::validate to get detailed validation results
     // Handle potential panic with catch_unwind
-    let result = std::panic::catch_unwind(|| {
-        jsonschema::meta::validate(&schema_value)
-    });
-    
+    let result = std::panic::catch_unwind(|| jsonschema::meta::validate(&schema_value));
+
     match result {
         Ok(Ok(_)) => atoms::ok().encode(env),
         Ok(Err(error)) => {
             let error_map = rustler::types::map::map_new(env)
                 .map_put("type".encode(env), "meta_validation_error".encode(env))
                 .unwrap()
-                .map_put("message".encode(env), "Schema meta-validation failed".encode(env))
+                .map_put(
+                    "message".encode(env),
+                    "Schema meta-validation failed".encode(env),
+                )
                 .unwrap()
                 .map_put("details".encode(env), error.to_string().encode(env))
                 .unwrap();
@@ -911,9 +1023,15 @@ fn meta_validate(env: Env, schema_json: String) -> Term {
             let error_map = rustler::types::map::map_new(env)
                 .map_put("type".encode(env), "meta_validation_error".encode(env))
                 .unwrap()
-                .map_put("message".encode(env), "Meta-validation not supported for this schema format".encode(env))
+                .map_put(
+                    "message".encode(env),
+                    "Meta-validation not supported for this schema format".encode(env),
+                )
                 .unwrap()
-                .map_put("details".encode(env), "Unknown or unsupported $schema specification".encode(env))
+                .map_put(
+                    "details".encode(env),
+                    "Unknown or unsupported $schema specification".encode(env),
+                )
                 .unwrap();
             (atoms::error(), error_map).encode(env)
         }
@@ -930,24 +1048,24 @@ fn meta_validate_detailed(env: Env, schema_json: String) -> Term {
                 .unwrap()
                 .map_put("message".encode(env), "Invalid JSON".encode(env))
                 .unwrap()
-                .map_put("details".encode(env), format!("Failed to parse JSON: {}", e).encode(env))
+                .map_put(
+                    "details".encode(env),
+                    format!("Failed to parse JSON: {}", e).encode(env),
+                )
                 .unwrap();
             return (atoms::error(), error_map).encode(env);
         }
     };
 
     // Try to compile as a validator to get detailed meta-validation errors
-    let compilation_result = std::panic::catch_unwind(|| {
-        jsonschema::validator_for(&schema_value)
-    });
-    
+    let compilation_result = std::panic::catch_unwind(|| jsonschema::validator_for(&schema_value));
+
     match compilation_result {
         Ok(Ok(_validator)) => {
             // Schema is valid for compilation, now check meta-validation
-            let meta_result = std::panic::catch_unwind(|| {
-                jsonschema::meta::validate(&schema_value)
-            });
-            
+            let meta_result =
+                std::panic::catch_unwind(|| jsonschema::meta::validate(&schema_value));
+
             match meta_result {
                 Ok(Ok(_)) => atoms::ok().encode(env),
                 Ok(Err(error)) => {
@@ -961,7 +1079,7 @@ fn meta_validate_detailed(env: Env, schema_json: String) -> Term {
                         .unwrap()
                         .map_put("keyword".encode(env), "meta".encode(env))
                         .unwrap();
-                    
+
                     (atoms::error(), vec![error_details]).encode(env)
                 }
                 Err(_) => {
@@ -971,11 +1089,14 @@ fn meta_validate_detailed(env: Env, schema_json: String) -> Term {
                         .unwrap()
                         .map_put("schema_path".encode(env), "".encode(env))
                         .unwrap()
-                        .map_put("message".encode(env), "Meta-validation not supported for this schema format".encode(env))
+                        .map_put(
+                            "message".encode(env),
+                            "Meta-validation not supported for this schema format".encode(env),
+                        )
                         .unwrap()
                         .map_put("keyword".encode(env), "meta".encode(env))
                         .unwrap();
-                    
+
                     (atoms::error(), vec![error_details]).encode(env)
                 }
             }
@@ -987,11 +1108,14 @@ fn meta_validate_detailed(env: Env, schema_json: String) -> Term {
                 .unwrap()
                 .map_put("schema_path".encode(env), "".encode(env))
                 .unwrap()
-                .map_put("message".encode(env), compilation_error.to_string().encode(env))
+                .map_put(
+                    "message".encode(env),
+                    compilation_error.to_string().encode(env),
+                )
                 .unwrap()
                 .map_put("keyword".encode(env), "compilation".encode(env))
                 .unwrap();
-            
+
             (atoms::error(), vec![error_details]).encode(env)
         }
         Err(_) => {
@@ -1001,18 +1125,25 @@ fn meta_validate_detailed(env: Env, schema_json: String) -> Term {
                 .unwrap()
                 .map_put("schema_path".encode(env), "".encode(env))
                 .unwrap()
-                .map_put("message".encode(env), "Schema compilation failed due to unsupported format".encode(env))
+                .map_put(
+                    "message".encode(env),
+                    "Schema compilation failed due to unsupported format".encode(env),
+                )
                 .unwrap()
                 .map_put("keyword".encode(env), "compilation".encode(env))
                 .unwrap();
-            
+
             (atoms::error(), vec![error_details]).encode(env)
         }
     }
 }
 
 #[rustler::nif]
-fn compile_schema_with_options(env: Env, schema_json: String, options: ValidationOptionsStruct) -> Term {
+fn compile_schema_with_options(
+    env: Env,
+    schema_json: String,
+    options: ValidationOptionsStruct,
+) -> Term {
     let schema_value: Value = match serde_json::from_str(&schema_json) {
         Ok(value) => value,
         Err(e) => {

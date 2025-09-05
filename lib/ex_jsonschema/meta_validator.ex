@@ -2,7 +2,7 @@ defmodule ExJsonschema.MetaValidator do
   @moduledoc """
   Meta-validation functionality for JSON Schema documents.
 
-  This module provides functions to validate JSON Schema documents against their 
+  This module provides functions to validate JSON Schema documents against their
   respective meta-schemas, ensuring that schemas themselves are valid before
   being used for validation.
 
@@ -18,12 +18,12 @@ defmodule ExJsonschema.MetaValidator do
       schema = ~s({"type": "string", "minLength": 5})
       ExJsonschema.MetaValidator.valid?(schema)
       #=> true
-      
+
       # Validate with detailed error information
       invalid_schema = ~s({"type": "invalid_type"})
       ExJsonschema.MetaValidator.validate(invalid_schema)
       #=> {:error, [%ExJsonschema.ValidationError{...}]}
-      
+
       # Simple validation (ok/error result)
       ExJsonschema.MetaValidator.validate_simple(schema)
       #=> :ok
@@ -44,7 +44,7 @@ defmodule ExJsonschema.MetaValidator do
 
   # URLs that DON'T cause panics in the Rust crate (whitelist approach)
   # Based on testing, these are the only known working $schema URLs
-  # TODO: Remove this workaround once upstream jsonschema crate is fixed  
+  # TODO: Remove this workaround once upstream jsonschema crate is fixed
   # See: https://github.com/Stranger6667/jsonschema-rs/issues/XXX
   @safe_schema_urls [
     "http://json-schema.org/draft-04/schema#",
@@ -63,7 +63,7 @@ defmodule ExJsonschema.MetaValidator do
       iex> schema = ~s({"type": "string", "minLength": 5})
       iex> ExJsonschema.MetaValidator.valid?(schema)
       true
-      
+
       iex> invalid_schema = ~s({"type": "invalid_type"})
       iex> ExJsonschema.MetaValidator.valid?(schema)
       false
@@ -105,7 +105,7 @@ defmodule ExJsonschema.MetaValidator do
       iex> schema = ~s({"type": "string", "minLength": 5})
       iex> ExJsonschema.MetaValidator.validate_simple(schema)
       :ok
-      
+
       iex> invalid_schema = ~s({"type": "invalid_type"})
       iex> ExJsonschema.MetaValidator.validate_simple(invalid_schema)
       {:error, "Schema meta-validation failed"}
@@ -153,7 +153,7 @@ defmodule ExJsonschema.MetaValidator do
       iex> schema = ~s({"type": "string", "minLength": 5})
       iex> ExJsonschema.MetaValidator.validate(schema)
       :ok
-      
+
       iex> invalid_schema = ~s({"type": "invalid_type"})
       iex> ExJsonschema.MetaValidator.validate(invalid_schema)
       {:error, [%ExJsonschema.ValidationError{
@@ -204,7 +204,7 @@ defmodule ExJsonschema.MetaValidator do
       iex> schema = ~s({"type": "string", "minLength": 5})
       iex> ExJsonschema.MetaValidator.validate!(schema)
       :ok
-      
+
       iex> invalid_schema = ~s({"type": "invalid_type"})
       iex> ExJsonschema.MetaValidator.validate!(invalid_schema)
       ** (ExJsonschema.ValidationError) Schema meta-validation failed

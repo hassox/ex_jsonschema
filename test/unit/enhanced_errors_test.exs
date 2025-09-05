@@ -50,7 +50,7 @@ defmodule ExJsonschema.EnhancedErrorsTest do
     test "extracts schema title and description" do
       schema = ~s({
         "type": "object",
-        "title": "User Profile", 
+        "title": "User Profile",
         "description": "A user's profile information",
         "properties": {
           "name": {

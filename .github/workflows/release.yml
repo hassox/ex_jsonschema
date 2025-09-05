@@ -54,7 +54,6 @@ jobs:
           nif-version: ${{ matrix.nif }}
           use-cross: false
           project-dir: "native/ex_jsonschema"
-          features: "nif_version_${{ matrix.nif }}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -538,7 +538,7 @@ defmodule ExJsonschema.ErrorIntegrationExamplesTest do
       invalid_env = %{
         # wrong pattern
         "DATABASE_URL" => "mysql://invalid",
-        # wrong pattern  
+        # wrong pattern
         "REDIS_URL" => "http://wrong-protocol",
         # too short
         "SECRET_KEY_BASE" => "too_short",

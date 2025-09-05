@@ -141,7 +141,7 @@ defmodule ExJsonschema.ErrorAnalyzerTest do
       errors = [
         # critical
         %ValidationError{keyword: "type", instance_path: "/name"},
-        # critical  
+        # critical
         %ValidationError{keyword: "required", instance_path: ""},
         # high
         %ValidationError{keyword: "minimum", instance_path: "/age"},
@@ -223,7 +223,7 @@ defmodule ExJsonschema.ErrorAnalyzerTest do
         # Missing properties pattern
         %ValidationError{keyword: "required", instance_path: "/user"},
 
-        # Type conflicts pattern  
+        # Type conflicts pattern
         %ValidationError{keyword: "type", instance_path: "/name"},
         %ValidationError{keyword: "type", instance_path: "/age"},
 

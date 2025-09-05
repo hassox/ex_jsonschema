@@ -28,7 +28,7 @@ defmodule ExJsonschema.CacheBehaviorTest do
       # Verify it's cached by checking if we can get it directly
       assert {:ok, _cached} = ExJsonschema.Cache.Test.get("http://example.com/person.json")
 
-      # Second compilation with same schema - should reuse cached result  
+      # Second compilation with same schema - should reuse cached result
       {:ok, validator2} = ExJsonschema.compile(schema_with_id)
 
       # Both validators should be the same reference (cached)
@@ -121,7 +121,7 @@ defmodule ExJsonschema.CacheBehaviorTest do
 
       schema = ~s({"$id": "http://example.com/noop-test.json", "type": "string"})
 
-      # Compile multiple times - should get different references each time  
+      # Compile multiple times - should get different references each time
       {:ok, validator1} = ExJsonschema.compile(schema)
       {:ok, validator2} = ExJsonschema.compile(schema)
 

@@ -30,7 +30,7 @@ defmodule ExJsonschema.ValidationError do
   @doc """
   Creates a ValidationError from a map returned by the NIF.
 
-  Supports both detailed format (basic fields only) and verbose format 
+  Supports both detailed format (basic fields only) and verbose format
   (with additional context, values, and suggestions).
   """
   @spec from_map(map()) :: t()

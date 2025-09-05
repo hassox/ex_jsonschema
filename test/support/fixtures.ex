@@ -131,7 +131,7 @@ defmodule ExJsonschema.TestFixtures do
           "properties": {
             "id": {"type": "integer", "minimum": 1},
             "profile": {
-              "type": "object", 
+              "type": "object",
               "properties": {
                 "name": {"type": "string", "minLength": 1},
                 "email": {"type": "string", "format": "email"},

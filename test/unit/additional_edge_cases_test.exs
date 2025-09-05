@@ -43,7 +43,7 @@ defmodule ExJsonschema.AdditionalEdgeCasesTest do
     end
 
     test "compile with auto draft and various schemas" do
-      # Test with schema that has $schema 
+      # Test with schema that has $schema
       schema_with_draft = ~s({
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "string"

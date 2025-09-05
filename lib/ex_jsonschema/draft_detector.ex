@@ -10,7 +10,7 @@ defmodule ExJsonschema.DraftDetector do
   ## Supported Drafts
 
   - Draft 4 (2013)
-  - Draft 6 (2017) 
+  - Draft 6 (2017)
   - Draft 7 (2019)
   - Draft 2019-09
   - Draft 2020-12 (default)
@@ -288,7 +288,7 @@ defmodule ExJsonschema.DraftDetector do
   end
 
   defp handle_rust_response({:error, error_map}) when is_map(error_map) do
-    # Extract message from Rust error structure  
+    # Extract message from Rust error structure
     message = error_map["message"] || "Unknown error"
     details = error_map["details"]
 

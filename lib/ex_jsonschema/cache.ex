@@ -10,7 +10,7 @@ defmodule ExJsonschema.Cache do
   Configure which cache module to use:
 
       config :ex_jsonschema, cache: MyApp.EtsCache
-      
+
   ## Default
 
   By default, uses `ExJsonschema.Cache.Noop` which disables caching.
@@ -26,7 +26,7 @@ defmodule ExJsonschema.Cache do
         on_exit(cleanup)
         :ok
       end
-      
+
       # Non-async tests (global, works with spawns)
       setup do
         test_cache = start_supervised!({Agent, fn -> %{} end})

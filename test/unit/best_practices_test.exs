@@ -19,7 +19,7 @@ defmodule ExJsonschema.BestPracticesTest do
 
     test "lenient format validation (default) ignores format constraints" do
       schema = ~s({
-        "type": "string", 
+        "type": "string",
         "format": "email"
       })
 

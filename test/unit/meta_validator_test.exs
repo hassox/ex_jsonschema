@@ -55,7 +55,7 @@ defmodule ExJsonschema.MetaValidatorTest do
 
       # Array schema
       array_schema = ~s({
-        "type": "array", 
+        "type": "array",
         "items": {"type": "number"},
         "minItems": 1,
         "maxItems": 10

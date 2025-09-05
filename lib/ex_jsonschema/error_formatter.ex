@@ -13,19 +13,19 @@ defmodule ExJsonschema.ErrorFormatter do
 
       # Format errors for human consumption
       ErrorFormatter.format(errors, :human)
-      
+
       # Format as JSON with pretty printing
       ErrorFormatter.format(errors, :json, pretty: true)
-      
+
       # Format as compact table
       ErrorFormatter.format(errors, :table, compact: true)
-      
+
       # Format as markdown for documentation
       ErrorFormatter.format(errors, :markdown)
-      
+
       # Format for LLM consumption
       ErrorFormatter.format(errors, :llm)
-      
+
   ## Formatting Options
 
   Each format supports specific options:
@@ -34,7 +34,7 @@ defmodule ExJsonschema.ErrorFormatter do
   - `color: boolean()` - Enable/disable ANSI color codes (default: true)
   - `max_errors: pos_integer()` - Maximum errors to display (default: 20)
 
-  ### JSON Format Options  
+  ### JSON Format Options
   - `pretty: boolean()` - Pretty print JSON with indentation (default: false)
 
   ### Table Format Options
@@ -124,7 +124,7 @@ defmodule ExJsonschema.ErrorFormatter do
       true
       iex> :markdown in formats
       true
-      
+
   """
   @spec available_formats() :: [format()]
   def available_formats, do: @available_formats
@@ -146,7 +146,7 @@ defmodule ExJsonschema.ErrorFormatter do
       iex> result = ExJsonschema.ErrorFormatter.format(errors, :human)
       iex> is_binary(result)
       true
-      
+
   """
   @spec format([ValidationError.t()], format(), format_options()) :: String.t()
   def format(errors, format, options \\ [])
@@ -594,7 +594,7 @@ defmodule ExJsonschema.ErrorFormatter do
 
   defp escape_markdown(value), do: inspect(value)
 
-  # LLM format implementation  
+  # LLM format implementation
   defp format_llm(errors, options) do
     max_errors = Keyword.get(options, :max_errors, 20)
     include_schema_context = Keyword.get(options, :include_schema_context, true)

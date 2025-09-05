@@ -1,7 +1,7 @@
 import Config
 
 # Development configuration for ExJsonschema
-# 
+#
 # This configuration enables structured logging for development while maintaining
 # good performance for benchmarks. Use :debug level only when detailed tracing
 # is needed for debugging specific issues.
@@ -18,7 +18,7 @@ config :ex_jsonschema,
   log_level: :info,
   # Log compilation performance metrics
   log_compilation_time: true,
-  # Log validation performance metrics  
+  # Log validation performance metrics
   log_validation_time: true,
   # Include detailed error context in logs
   log_error_details: true

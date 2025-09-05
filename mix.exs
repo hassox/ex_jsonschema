@@ -11,6 +11,7 @@ defmodule ExJsonschema.MixProject do
       version: @version,
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
+      config_path: "config/config.exs",
       deps: deps(),
       description: @description,
       package: package(),
@@ -20,7 +21,24 @@ defmodule ExJsonschema.MixProject do
       # Additional metadata for better discoverability
       name: "ExJsonschema",
       source_url: @source_url,
-      homepage_url: @source_url
+      homepage_url: @source_url,
+
+      # Test coverage configuration
+      test_coverage: [
+        threshold: 90.0,
+        ignore_modules: [
+          # Exclude Mix tasks from coverage requirements
+          Mix.Tasks.Benchmark,
+          Mix.Tasks.Demo,
+          # Exclude native NIF module (only contains stub functions)
+          ExJsonschema.Native,
+          # Exclude protocol implementations (these are auto-generated)
+          Inspect.ExJsonschema.ValidationError,
+          String.Chars.ExJsonschema.ValidationError,
+          # Exclude validation error exception (used only for validate!)
+          ExJsonschema.ValidationError.Exception
+        ]
+      ]
     ]
   end
 
@@ -38,7 +56,8 @@ defmodule ExJsonschema.MixProject do
       {:rustler_precompiled, "~> 0.8"},
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:stream_data, "~> 1.0", only: :test}
     ]
   end
 
@@ -70,16 +89,31 @@ defmodule ExJsonschema.MixProject do
     [
       extras: [
         "README.md": [title: "Overview"],
-        "CHANGELOG.md": [title: "Changelog"]
+        "docs/guides/getting_started.md": [title: "Getting Started"],
+        "docs/guides/advanced_features.md": [title: "Advanced Features"],
+        "docs/guides/streaming_validation.md": [title: "Streaming Validation"],
+        "docs/guides/performance_production.md": [title: "Performance & Production"],
+        "CHANGELOG.md": [title: "Changelog"],
+        LICENSE: [title: "License"]
       ],
       main: "readme",
       source_ref: "v#{@version}",
       source_url: @source_url,
       formatters: ["html"],
+      groups_for_extras: [
+        Guides: [
+          "docs/guides/getting_started.md",
+          "docs/guides/advanced_features.md",
+          "docs/guides/streaming_validation.md",
+          "docs/guides/performance_production.md"
+        ]
+      ],
       groups_for_modules: [
         Core: [ExJsonschema],
+        Configuration: [ExJsonschema.Options, ExJsonschema.Profile],
         Errors: [ExJsonschema.ValidationError, ExJsonschema.CompilationError],
-        Internal: [ExJsonschema.Native]
+        Behaviors: [ExJsonschema.Cache],
+        Internal: [ExJsonschema.Native, ExJsonschema.DraftDetector]
       ]
     ]
   end
@@ -95,8 +129,8 @@ defmodule ExJsonschema.MixProject do
 
   defp rustler_mode do
     # Use precompiled NIFs in production, compile from source in dev
-    
-    if (System.get_env("EX_JSONSCHEMA_BUILD") in ["1", "true"]) or (Mix.env() in [:dev, :test]) do
+
+    if System.get_env("EX_JSONSCHEMA_BUILD") in ["1", "true"] or Mix.env() in [:dev, :test] do
       :release
     else
       {:precompiled, "#{@source_url}/releases/download/v#{@version}"}

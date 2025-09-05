@@ -1,0 +1,9 @@
+The JSON document failed validation with 7 errors:
+
+1. At location `/preferences/notifications`: Additional properties are not allowed ('sms' was unexpected) Suggestions: Validation failed for 'additionalProperties' constraint; Expected: "constraint: additionalProperties"; Check the schema documentation for this constraint; Verify your data matches the expected format; Error details: Additional properties are not allowed ('sms' was unexpected).
+2. At location `/preferences/theme`: "purple" is not one of "light", "dark" or "auto" Suggestions: Value must be one of: ["light","dark","auto"].
+3. At location `/settings/language`: "invalid-lang-code" does not match "^[a-z]{2}(-[A-Z]{2})?$" Suggestions: String must match pattern: "^[a-z]{2}(-[A-Z]{2})?$".
+4. At location `/user/age`: 15 is less than the minimum of 18 Suggestions: Value must be >= 18.
+5. At location `/user/name`: "X" is shorter than 2 characters Suggestions: String must be at least 2 characters.
+6. At location `/user/roles/1`: "invalid-role" is not one of "admin", "user" or "moderator" Suggestions: Value must be one of: ["admin","user","moderator"].
+7. At location `/user/roles`: ["admin","invalid-role","admin"] has non-unique elements Suggestions: Array items must be unique.

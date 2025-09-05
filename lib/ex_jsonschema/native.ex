@@ -10,10 +10,40 @@ defmodule ExJsonschema.Native do
     force_build: System.get_env("EX_JSONSCHEMA_BUILD") in ["1", "true"],
     version: version
 
-  # When not available, Rustler will compile instead
+  @type compiled_schema :: reference()
+  @type draft :: :auto | :draft4 | :draft6 | :draft7 | :draft201909 | :draft202012
+  @type regex_engine :: :fancy_regex | :regex
+
+  @type compilation_options :: %{
+          draft: draft(),
+          validate_formats: boolean(),
+          regex_engine: regex_engine()
+        }
+
+  @type compilation_result :: {:ok, compiled_schema()} | {:error, map()}
+  @type validation_result :: :ok | :error | {:error, [map()]}
+  @type detection_result :: {:ok, draft()} | {:error, map()}
+
+  # Schema compilation  
   def compile_schema(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
+  def compile_schema_with_draft(_schema_json, _draft), do: :erlang.nif_error(:nif_not_loaded)
+  def compile_schema_with_options(_schema_json, _options), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Validation  
   def validate(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)
   def validate_detailed(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)
-  def valid?(compiled_schema, instance_json), do: valid(compiled_schema, instance_json)
+  def validate_verbose(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)
   def valid(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Backward compatibility
+  def valid?(compiled_schema, instance_json), do: valid(compiled_schema, instance_json)
+  def is_valid(compiled_schema, instance_json), do: valid(compiled_schema, instance_json)
+
+  # Draft detection
+  def detect_draft_from_schema(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Meta-validation
+  def meta_is_valid(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
+  def meta_validate(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
+  def meta_validate_detailed(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
 end

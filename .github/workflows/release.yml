@@ -1,9 +1,14 @@
-name: Release
+name: Build precompiled NIFs
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - "native/**"
+      - ".github/workflows/release.yml"
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -11,33 +16,27 @@ permissions:
   actions: read
 
 jobs:
-  build_nif:
-    name: Build NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
+  build_release:
+    name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
         nif: ["2.15", "2.17"]
         job:
-          - { target: aarch64-apple-darwin   , os: macos-14       , use-cross: false }
-          - { target: x86_64-apple-darwin    , os: macos-13       , use-cross: false }
-          - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 , use-cross: false }
-          - { target: x86_64-pc-windows-msvc, os: windows-2022   , use-cross: false }
+          - { target: aarch64-apple-darwin   , os: macos-14       }
+          - { target: x86_64-apple-darwin    , os: macos-13       }
+          - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
+          - { target: x86_64-pc-windows-msvc, os: windows-2022   }
 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Extract crate information
+      - name: Extract project version
         shell: bash
         run: |
-          echo "PROJECT_NAME=ex_jsonschema" >> $GITHUB_ENV
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "PROJECT_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-          else
-            # For workflow_dispatch or other events, use the current commit or default
-            echo "PROJECT_VERSION=dev-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          fi
+          echo "PROJECT_VERSION=$(sed -n 's/^  @version \"\(.*\)\"/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -45,119 +44,34 @@ jobs:
           toolchain: stable
           target: ${{ matrix.job.target }}
 
-      - name: Install cross
-        if: matrix.job.use-cross
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cross
-
-      - name: Show version information
-        shell: bash
-        run: |
-          gcc --version || true
-          rustup -V
-          rustup toolchain list
-          rustup default
-          cargo -V
-          rustc -V
-
       - name: Build the project
-        shell: bash
-        run: |
-          cd native/ex_jsonschema
-          
-          if [[ "${{ matrix.job.use-cross }}" == "true" ]]; then
-            cross build --release --target=${{ matrix.job.target }}
-          else
-            cargo build --release --target=${{ matrix.job.target }}
-          fi
-
-      - name: Rename lib to the final name
-        shell: bash
-        run: |
-          cd native/ex_jsonschema
-          LIB_PREFIX="lib"
-          case ${{ matrix.job.target }} in
-            *-pc-windows-*) LIB_PREFIX="" ;;
-          esac
-          
-          # Rust produces different extensions but NIFs need .so (except Windows)
-          BUILT_EXTENSION="so"
-          case ${{ matrix.job.target }} in
-            *-pc-windows-*) BUILT_EXTENSION="dll" ;;
-            *-apple-darwin) BUILT_EXTENSION="dylib" ;;
-          esac
-          
-          FINAL_EXTENSION="so"
-          case ${{ matrix.job.target }} in
-            *-pc-windows-*) FINAL_EXTENSION="dll" ;;
-          esac
-          
-          BUILT_LIB="target/${{ matrix.job.target }}/release/${LIB_PREFIX}ex_jsonschema.${BUILT_EXTENSION}"
-          FINAL_LIB="libex_jsonschema.${FINAL_EXTENSION}"
-          
-          echo "Built lib: $BUILT_LIB"
-          echo "Final lib: $FINAL_LIB"
-          
-          cp "${BUILT_LIB}" "${FINAL_LIB}"
-
-      - name: Create archive
-        shell: bash
-        run: |
-          cd native/ex_jsonschema
-          LIB_EXTENSION="so"
-          case ${{ matrix.job.target }} in
-            *-pc-windows-*) LIB_EXTENSION="dll" ;;
-          esac
-          
-          ARCHIVE_NAME="libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.${LIB_EXTENSION}.tar.gz"
-          echo "Archive name: $ARCHIVE_NAME"
-          tar -czf "$ARCHIVE_NAME" "libex_jsonschema.${LIB_EXTENSION}"
-          echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
-          echo "ASSET_PATH=native/ex_jsonschema/$ARCHIVE_NAME" >> $GITHUB_ENV
+        id: build-crate
+        uses: philss/rustler-precompiled-action@v1.1.4
+        with:
+          project-name: ex_jsonschema
+          project-version: ${{ env.PROJECT_VERSION }}
+          target: ${{ matrix.job.target }}
+          nif-version: ${{ matrix.nif }}
+          use-cross: false
+          project-dir: "native/ex_jsonschema"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ARCHIVE_NAME }}
-          path: ${{ env.ASSET_PATH }}
+          name: ${{ steps.build-crate.outputs.file-name }}
+          path: ${{ steps.build-crate.outputs.file-path }}
 
-  release:
-    name: Create Release
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: [build_nif]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
-
-      - name: Extract crate information
-        shell: bash
-        run: |
-          echo "PROJECT_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
+      - name: Publish archives and packages
+        uses: softprops/action-gh-release@v2
         with:
-          path: artifacts
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: "v${{ env.PROJECT_VERSION }}"
-          tag_name: "v${{ env.PROJECT_VERSION }}"
-          draft: false
-          prerelease: false
-          generate_release_notes: true
           files: |
-            artifacts/**/*.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            ${{ steps.build-crate.outputs.file-path }}
+        if: startsWith(github.ref, 'refs/tags/')
 
   publish_hex:
     name: Publish to Hex.pm
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: [build_nif, release]
+    needs: [build_release]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -171,28 +85,6 @@ jobs:
 
       - name: Install dependencies
         run: mix deps.get
-
-      - name: Create checksum file
-        run: |
-          # Download the release artifacts to generate checksums
-          curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest \
-            | grep "browser_download_url.*tar.gz" \
-            | cut -d '"' -f 4 \
-            | wget -qi -
-          
-          # Generate checksums
-          sha256sum *.tar.gz > checksum-Elixir.ExJsonschema.Native.exs
-          
-          # Format as Elixir map
-          echo '%{' > temp_checksum
-          while IFS= read -r line; do
-            hash=$(echo $line | cut -d' ' -f1)
-            filename=$(echo $line | cut -d' ' -f2)
-            echo "  \"$filename\" => \"sha256:$hash\"," >> temp_checksum
-          done < <(sha256sum *.tar.gz)
-          echo '}' >> temp_checksum
-          
-          mv temp_checksum checksum-Elixir.ExJsonschema.Native.exs
 
       - name: Publish to Hex
         env:

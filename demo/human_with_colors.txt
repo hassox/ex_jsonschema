@@ -1,0 +1,23 @@
+[1;31m5 Validation Errors Found[0m
+
+[1;33mError 1:[0m
+Location: [0;36m/preferences/notifications[0m
+Message:  [0;37mAdditional properties are not allowed ('sms' was unexpected)[0m ([0;35madditionalProperties[0m)
+
+[1;33mError 2:[0m
+Location: [0;36m/preferences/theme[0m
+Message:  [0;37m"purple" is not one of "light", "dark" or "auto"[0m ([0;35menum[0m)
+
+[1;33mError 3:[0m
+Location: [0;36m/settings/language[0m
+Message:  [0;37m"invalid-lang-code" does not match "^[a-z]{2}(-[A-Z]{2})?$"[0m ([0;35mpattern[0m)
+
+[1;33mError 4:[0m
+Location: [0;36m/user/age[0m
+Message:  [0;37m15 is less than the minimum of 18[0m ([0;35mminimum[0m)
+
+[1;33mError 5:[0m
+Location: [0;36m/user/name[0m
+Message:  [0;37m"X" is shorter than 2 characters[0m ([0;35mminLength[0m)
+
+[3;33m... and 2 more errors[0m

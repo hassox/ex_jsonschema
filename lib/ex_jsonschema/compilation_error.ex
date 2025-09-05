@@ -7,7 +7,13 @@ defmodule ExJsonschema.CompilationError do
   """
 
   @type t :: %__MODULE__{
-          type: :json_parse_error | :schema_validation_error | :compilation_error,
+          type:
+            :json_parse_error
+            | :schema_validation_error
+            | :compilation_error
+            | :options_error
+            | :detection_error
+            | :validation_error,
           message: String.t(),
           details: String.t() | nil
         }
@@ -24,6 +30,9 @@ defmodule ExJsonschema.CompilationError do
         "json_parse_error" -> :json_parse_error
         "schema_validation_error" -> :schema_validation_error
         "compilation_error" -> :compilation_error
+        "options_error" -> :options_error
+        "detection_error" -> :detection_error
+        "validation_error" -> :validation_error
         _ -> :compilation_error
       end
 
@@ -36,6 +45,42 @@ defmodule ExJsonschema.CompilationError do
 
   def from_map(%{"type" => type_str, "message" => message}) do
     from_map(%{"type" => type_str, "message" => message, "details" => nil})
+  end
+
+  @doc """
+  Creates a CompilationError from an options validation error.
+  """
+  @spec from_options_error(String.t()) :: t()
+  def from_options_error(reason) do
+    %__MODULE__{
+      type: :options_error,
+      message: "Invalid compilation options",
+      details: reason
+    }
+  end
+
+  @doc """
+  Creates a CompilationError from a draft detection error.
+  """
+  @spec from_detection_error(String.t()) :: t()
+  def from_detection_error(reason) do
+    %__MODULE__{
+      type: :detection_error,
+      message: "Draft detection failed",
+      details: reason
+    }
+  end
+
+  @doc """
+  Creates a CompilationError from a validation error during compilation.
+  """
+  @spec from_validation_error(String.t()) :: t()
+  def from_validation_error(reason) do
+    %__MODULE__{
+      type: :validation_error,
+      message: "Compilation validation failed",
+      details: reason
+    }
   end
 
   defimpl String.Chars do

@@ -298,6 +298,79 @@ All core keywords and validation rules are supported, including:
 - String formats (`email`, `uri`, `date-time`, etc.)
 - Conditional schemas (`if`/`then`/`else`, `allOf`, `anyOf`, `oneOf`)
 
+## 🚀 Caching
+
+ExJsonschema provides flexible caching for compiled schemas to improve performance in applications that reuse schemas:
+
+### Default (No Caching)
+```elixir
+# By default, no caching is used
+{:ok, compiled} = ExJsonschema.compile(schema)
+```
+
+### Enable Caching
+```elixir
+# Configure a cache module
+config :ex_jsonschema, cache: MyApp.SchemaCache
+
+# Schemas with $id will be cached automatically
+schema_with_id = ~s({
+  "$id": "http://example.com/user.json",
+  "type": "object",
+  "properties": {"name": {"type": "string"}}
+})
+
+# First compilation
+{:ok, compiled1} = ExJsonschema.compile(schema_with_id)
+
+# Second compilation - uses cached version 
+{:ok, compiled2} = ExJsonschema.compile(schema_with_id)
+# compiled1 == compiled2 (same reference)
+```
+
+### Testing with Caching
+```elixir
+# Recommended: disable caching in tests
+# config/test.exs
+config :ex_jsonschema, cache: ExJsonschema.Cache.Noop
+
+# For cache-specific tests
+setup do
+  test_cache = start_supervised!({Agent, fn -> %{} end})
+  cleanup = ExJsonschema.Cache.Test.setup_process_mode(test_cache)
+  on_exit(cleanup)
+  :ok
+end
+```
+
+See the [Caching Guide](docs/guides/caching.md) for detailed information on implementing custom caches with ETS, Cachex, Nebulex, and more.
+
+## 🧪 Testing
+
+ExJsonschema works seamlessly in tests with no special setup required:
+
+```elixir
+defmodule MyAppTest do
+  use ExUnit.Case, async: true
+  
+  test "validates user data" do
+    schema = ~s({"type": "object", "required": ["name"]})
+    {:ok, compiled} = ExJsonschema.compile(schema)
+    
+    assert :ok = ExJsonschema.validate(compiled, ~s({"name": "John"}))
+    assert {:error, _} = ExJsonschema.validate(compiled, ~s({}))
+  end
+end
+```
+
+**For robust testing**, disable caching in your test environment:
+```elixir
+# config/test.exs
+config :ex_jsonschema, cache: ExJsonschema.Cache.Noop
+```
+
+See the [Testing Guide](docs/guides/testing.md) for advanced testing patterns, cache testing, and best practices.
+
 ## 📚 Examples
 
 ### User Registration Validation

@@ -86,7 +86,6 @@ defmodule ExJsonschema.Options do
 
     # Performance settings
     regex_engine: :fancy_regex,
-    cache_compiled_schemas: false,
 
     # Output control
     output_format: :basic,
@@ -109,7 +108,6 @@ defmodule ExJsonschema.Options do
           retriever: module() | nil,
           reference_cache: module() | nil,
           regex_engine: regex_engine(),
-          cache_compiled_schemas: boolean(),
           output_format: output_format(),
           include_schema_path: boolean(),
           include_instance_path: boolean(),
@@ -132,7 +130,6 @@ defmodule ExJsonschema.Options do
     * `:retriever` - Custom retriever module for external references (default: `nil`)
     * `:reference_cache` - Custom cache module for references (default: `nil`)
     * `:regex_engine` - Regex engine to use (default: `:fancy_regex`)
-    * `:cache_compiled_schemas` - Enable schema compilation caching (default: `false`)
     * `:output_format` - Error output format (default: `:basic`)
     * `:include_schema_path` - Include schema path in errors (default: `true`)
     * `:include_instance_path` - Include instance path in errors (default: `true`)
@@ -174,7 +171,7 @@ defmodule ExJsonschema.Options do
   end
 
   def new(overrides) when is_list(overrides) do
-    struct(__MODULE__, overrides)
+    struct(%__MODULE__{}, overrides)
   end
 
   @doc """

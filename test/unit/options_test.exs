@@ -17,7 +17,6 @@ defmodule ExJsonschema.OptionsTest do
       assert opts.retriever == nil
       assert opts.reference_cache == nil
       assert opts.regex_engine == :fancy_regex
-      assert opts.cache_compiled_schemas == false
       assert opts.output_format == :basic
       assert opts.include_schema_path == true
       assert opts.include_instance_path == true
@@ -158,7 +157,6 @@ defmodule ExJsonschema.OptionsTest do
           regex_engine: :regex,
           collect_annotations: false,
           stop_on_first_error: true,
-          cache_compiled_schemas: true,
           output_format: :flag
         )
 
@@ -166,7 +164,6 @@ defmodule ExJsonschema.OptionsTest do
       assert opts.regex_engine == :regex
       assert opts.collect_annotations == false
       assert opts.stop_on_first_error == true
-      assert opts.cache_compiled_schemas == true
       assert opts.output_format == :flag
     end
 
@@ -200,7 +197,7 @@ defmodule ExJsonschema.OptionsTest do
       assert is_boolean(opts.collect_annotations)
       assert is_boolean(opts.stop_on_first_error)
       assert is_boolean(opts.resolve_external_refs)
-      assert is_boolean(opts.cache_compiled_schemas)
+      assert is_atom(opts.regex_engine)  # Test a different field instead
       assert is_boolean(opts.include_schema_path)
       assert is_boolean(opts.include_instance_path)
       assert is_boolean(opts.allow_remote_references)

@@ -1001,6 +1001,44 @@ defmodule ExJsonschema do
   defp compile_with_native_options(schema_json, %Options{draft: draft} = options) do
     Logger.debug("Compiling with native options", %{draft: draft})
 
+    # Check cache first using schema ID
+    case extract_schema_id(schema_json) do
+      {:ok, schema_id} ->
+        cache_module = get_cache_module()
+        case cache_module.get(schema_id) do
+          {:ok, cached_compiled} ->
+            Logger.debug("Cache hit for schema compilation", %{schema_id: schema_id, cache: cache_module})
+            {:ok, cached_compiled}
+            
+          {:error, :not_found} ->
+            Logger.debug("Cache miss, proceeding with compilation", %{schema_id: schema_id, cache: cache_module})
+            compile_and_cache(schema_json, schema_id, options)
+            
+          {:error, :no_test_cache_configured} ->
+            Logger.debug("No test cache configured, proceeding without caching")
+            compile_without_cache(schema_json, options)
+        end
+        
+      {:error, :no_id} ->
+        Logger.debug("No schema ID found, proceeding without caching")
+        compile_without_cache(schema_json, options)
+    end
+  end
+  
+  defp compile_and_cache(schema_json, schema_id, options) do
+    case compile_without_cache(schema_json, options) do
+      {:ok, compiled} ->
+        # Store in cache for future use
+        cache_module = get_cache_module()
+        cache_module.put(schema_id, compiled)
+        {:ok, compiled}
+        
+      error ->
+        error
+    end
+  end
+
+  defp compile_without_cache(schema_json, %Options{draft: draft} = options) do
     # For M3.5: Draft-specific compilation with validation
     case validate_compilation_options(schema_json, options) do
       :ok ->
@@ -1062,5 +1100,33 @@ defmodule ExJsonschema do
       {:error, reason} ->
         {:error, "Draft detection failed: #{reason}"}
     end
+  end
+
+  # Extract schema ID for caching purposes
+  # Looks for $id first (preferred), then falls back to $schema
+  defp get_cache_module do
+    Application.get_env(:ex_jsonschema, :cache, ExJsonschema.Cache.Noop)
+  end
+
+  defp extract_schema_id(schema_json) when is_binary(schema_json) do
+    case Jason.decode(schema_json) do
+      {:ok, schema_map} when is_map(schema_map) ->
+        schema_id = Map.get(schema_map, "$id") || Map.get(schema_map, "$schema")
+        
+        case schema_id do
+          id when is_binary(id) and byte_size(id) > 0 -> {:ok, id}
+          _ -> {:error, :no_id}
+        end
+        
+      {:ok, _} ->
+        # Boolean schemas or other non-map schemas don't have IDs
+        {:error, :no_id}
+        
+      {:error, _} ->
+        # Malformed JSON - no ID can be extracted
+        {:error, :no_id}
+    end
+  rescue
+    _ -> {:error, :no_id}
   end
 end

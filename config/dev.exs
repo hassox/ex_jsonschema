@@ -10,8 +10,6 @@ config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id, :error_count, :schema_size, :instance_size, :format]
 
-# Set log level to info for good balance of visibility and performance
-# Change to :debug when you need detailed operation tracing
 config :logger, level: :info
 
 # ExJsonschema-specific logging configuration

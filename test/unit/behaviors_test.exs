@@ -6,15 +6,10 @@ defmodule ExJsonschema.BehaviorsTest do
 
   describe "ExJsonschema.Cache behavior" do
     test "defines required callbacks" do
-      assert_callback(ExJsonschema.Cache, :get, 2)
-      assert_callback(ExJsonschema.Cache, :put, 3)
-      assert_callback(ExJsonschema.Cache, :delete, 2)
-      assert_callback(ExJsonschema.Cache, :clear, 1)
-    end
-
-    test "defines optional callbacks" do
-      assert_optional_callback(ExJsonschema.Cache, :size, 1)
-      assert_optional_callback(ExJsonschema.Cache, :stats, 1)
+      assert_callback(ExJsonschema.Cache, :get, 1)
+      assert_callback(ExJsonschema.Cache, :put, 2)  
+      assert_callback(ExJsonschema.Cache, :delete, 1)
+      assert_callback(ExJsonschema.Cache, :clear, 0)
     end
 
     test "has correct type specifications" do

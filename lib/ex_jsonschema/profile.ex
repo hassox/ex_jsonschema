@@ -55,7 +55,6 @@ defmodule ExJsonschema.Profile do
       micro_profile = ExJsonschema.Options.new(
         output_format: :basic,
         stop_on_first_error: true,
-        cache_compiled_schemas: true,
         regex_engine: :regex
       )
       
@@ -136,8 +135,6 @@ defmodule ExJsonschema.Profile do
 
       # Performance - quality over speed
       regex_engine: :fancy_regex,
-      # Good for repeated validation
-      cache_compiled_schemas: true,
 
       # Draft - latest and most rigorous
       draft: :draft202012
@@ -219,7 +216,6 @@ defmodule ExJsonschema.Profile do
       # Performance - balanced approach
       # Better user experience
       regex_engine: :fancy_regex,
-      cache_compiled_schemas: true,
 
       # Draft - automatic detection for mixed environments
       draft: :auto
@@ -303,8 +299,6 @@ defmodule ExJsonschema.Profile do
       # Performance - maximum optimization
       # Faster regex engine
       regex_engine: :regex,
-      # Essential for performance
-      cache_compiled_schemas: true,
 
       # Draft - explicit for consistency
       # Avoid auto-detection overhead

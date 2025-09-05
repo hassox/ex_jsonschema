@@ -23,7 +23,6 @@ defmodule ExJsonschema.ProfileTest do
       assert opts.max_reference_depth == 5
       assert opts.trusted_domains == []
       assert opts.regex_engine == :fancy_regex
-      assert opts.cache_compiled_schemas == true
       assert opts.draft == :draft202012
     end
 
@@ -67,7 +66,6 @@ defmodule ExJsonschema.ProfileTest do
       assert opts.max_reference_depth == 8
       assert opts.trusted_domains == []
       assert opts.regex_engine == :fancy_regex
-      assert opts.cache_compiled_schemas == true
       assert opts.draft == :auto
     end
 
@@ -110,7 +108,6 @@ defmodule ExJsonschema.ProfileTest do
       assert opts.max_reference_depth == 3
       assert opts.trusted_domains == []
       assert opts.regex_engine == :regex
-      assert opts.cache_compiled_schemas == true
       assert opts.draft == :draft202012
     end
 
@@ -220,7 +217,7 @@ defmodule ExJsonschema.ProfileTest do
       assert diff[:draft] == {:draft202012, :auto}
 
       # Should not include identical values
-      refute Map.has_key?(diff, :cache_compiled_schemas)
+      refute Map.has_key?(diff, :cache)
       refute Map.has_key?(diff, :resolve_external_refs)
     end
 
@@ -340,7 +337,6 @@ defmodule ExJsonschema.ProfileTest do
 
       # Performance optimizations
       assert opts.regex_engine == :regex
-      assert opts.cache_compiled_schemas == true
       # Avoid detection overhead
       assert opts.draft != :auto
     end

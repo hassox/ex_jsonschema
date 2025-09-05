@@ -31,6 +31,7 @@ defmodule MyAppTest do
 end
 ```
 
+
 ## Recommended: Disable Caching in Tests
 
 For the most robust testing experience, we recommend disabling caching entirely in your test environment:

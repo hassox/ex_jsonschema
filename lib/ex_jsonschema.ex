@@ -1005,26 +1005,35 @@ defmodule ExJsonschema do
     case extract_schema_id(schema_json) do
       {:ok, schema_id} ->
         cache_module = get_cache_module()
+
         case cache_module.get(schema_id) do
           {:ok, cached_compiled} ->
-            Logger.debug("Cache hit for schema compilation", %{schema_id: schema_id, cache: cache_module})
+            Logger.debug("Cache hit for schema compilation", %{
+              schema_id: schema_id,
+              cache: cache_module
+            })
+
             {:ok, cached_compiled}
-            
+
           {:error, :not_found} ->
-            Logger.debug("Cache miss, proceeding with compilation", %{schema_id: schema_id, cache: cache_module})
+            Logger.debug("Cache miss, proceeding with compilation", %{
+              schema_id: schema_id,
+              cache: cache_module
+            })
+
             compile_and_cache(schema_json, schema_id, options)
-            
+
           {:error, :no_test_cache_configured} ->
             Logger.debug("No test cache configured, proceeding without caching")
             compile_without_cache(schema_json, options)
         end
-        
+
       {:error, :no_id} ->
         Logger.debug("No schema ID found, proceeding without caching")
         compile_without_cache(schema_json, options)
     end
   end
-  
+
   defp compile_and_cache(schema_json, schema_id, options) do
     case compile_without_cache(schema_json, options) do
       {:ok, compiled} ->
@@ -1032,40 +1041,23 @@ defmodule ExJsonschema do
         cache_module = get_cache_module()
         cache_module.put(schema_id, compiled)
         {:ok, compiled}
-        
+
       error ->
         error
     end
   end
 
-  defp compile_without_cache(schema_json, %Options{draft: draft} = options) do
-    # For M3.5: Draft-specific compilation with validation
+  defp compile_without_cache(schema_json, %Options{} = options) do
+    # Single transformation point: Options -> Native ValidationOptions
+    native_options = ExJsonschema.Native.ValidationOptions.from_options(options)
+
     case validate_compilation_options(schema_json, options) do
       :ok ->
-        Logger.debug("Compilation options validation successful")
+        Logger.debug("Using jsonschema::options() builder compilation")
 
-        # Use draft-specific compilation when draft is specified (not :auto)
-        result =
-          case draft do
-            :auto ->
-              Logger.debug("Using generic compilation (auto draft)")
-              # Already resolved by compile_with_options, shouldn't reach here
-              Native.compile_schema(schema_json)
-
-            draft when draft in [:draft4, :draft6, :draft7, :draft201909, :draft202012] ->
-              Logger.debug("Using draft-specific compilation", %{draft: draft})
-              Native.compile_schema_with_draft(schema_json, draft)
-
-            _ ->
-              Logger.warning("Unknown draft, falling back to generic compilation", %{draft: draft})
-
-              # Fallback to generic compilation
-              Native.compile_schema(schema_json)
-          end
-
-        case result do
+        case Native.compile_schema_with_options(schema_json, native_options) do
           {:ok, compiled} ->
-            Logger.debug("Native compilation successful")
+            Logger.debug("Native compilation with options successful")
             {:ok, compiled}
 
           {:error, error_map} ->
@@ -1112,16 +1104,16 @@ defmodule ExJsonschema do
     case Jason.decode(schema_json) do
       {:ok, schema_map} when is_map(schema_map) ->
         schema_id = Map.get(schema_map, "$id") || Map.get(schema_map, "$schema")
-        
+
         case schema_id do
           id when is_binary(id) and byte_size(id) > 0 -> {:ok, id}
           _ -> {:error, :no_id}
         end
-        
+
       {:ok, _} ->
         # Boolean schemas or other non-map schemas don't have IDs
         {:error, :no_id}
-        
+
       {:error, _} ->
         # Malformed JSON - no ID can be extracted
         {:error, :no_id}

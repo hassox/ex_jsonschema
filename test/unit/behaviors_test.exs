@@ -5,7 +5,7 @@ defmodule ExJsonschema.BehaviorsTest do
   describe "ExJsonschema.Cache behavior" do
     test "defines required callbacks" do
       assert_callback(ExJsonschema.Cache, :get, 1)
-      assert_callback(ExJsonschema.Cache, :put, 2)  
+      assert_callback(ExJsonschema.Cache, :put, 2)
       assert_callback(ExJsonschema.Cache, :delete, 1)
       assert_callback(ExJsonschema.Cache, :clear, 0)
     end
@@ -18,7 +18,6 @@ defmodule ExJsonschema.BehaviorsTest do
     end
   end
 
-
   # Helper functions for testing behavior definitions
   defp assert_callback(behavior, function, arity) do
     callbacks = behavior.behaviour_info(:callbacks)
@@ -26,5 +25,4 @@ defmodule ExJsonschema.BehaviorsTest do
     assert {function, arity} in callbacks,
            "Expected #{behavior} to define callback #{function}/#{arity}"
   end
-
 end

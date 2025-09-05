@@ -1,6 +1,6 @@
 defmodule ExJsonschema.CacheBehaviorTest do
   use ExUnit.Case, async: true
-  
+
   setup do
     # Set up test cache for each test using the helper function
     test_cache = start_supervised!({Agent, fn -> %{} end})
@@ -24,13 +24,13 @@ defmodule ExJsonschema.CacheBehaviorTest do
 
       # First compilation - should cache the result
       {:ok, validator1} = ExJsonschema.compile(schema_with_id)
-      
+
       # Verify it's cached by checking if we can get it directly
       assert {:ok, _cached} = ExJsonschema.Cache.Test.get("http://example.com/person.json")
 
       # Second compilation with same schema - should reuse cached result  
       {:ok, validator2} = ExJsonschema.compile(schema_with_id)
-      
+
       # Both validators should be the same reference (cached)
       assert validator1 == validator2
 
@@ -68,7 +68,7 @@ defmodule ExJsonschema.CacheBehaviorTest do
       {:ok, validator1} = ExJsonschema.compile(schema_no_id)
       {:ok, validator2} = ExJsonschema.compile(schema_no_id)
       {:ok, validator3} = ExJsonschema.compile(schema_no_id)
-      
+
       # Each should be a different reference since they're not cached
       assert validator1 != validator2
       assert validator2 != validator3
@@ -83,7 +83,7 @@ defmodule ExJsonschema.CacheBehaviorTest do
 
       # First compilation
       {:ok, validator1} = ExJsonschema.compile(schema_with_schema)
-      
+
       # Should be cached using $schema as key
       assert {:ok, _} = ExJsonschema.Cache.Test.get("http://json-schema.org/draft-07/schema#")
 
@@ -96,18 +96,18 @@ defmodule ExJsonschema.CacheBehaviorTest do
       # Compile a schema to get a proper reference for testing
       schema = ~s({"$id": "http://example.com/cache-test.json", "type": "string"})
       {:ok, compiled_ref} = ExJsonschema.compile(schema)
-      
+
       # Test direct cache operations
       assert :ok = ExJsonschema.Cache.Test.put("test-key", compiled_ref)
       assert {:ok, ^compiled_ref} = ExJsonschema.Cache.Test.get("test-key")
-      
+
       # Delete specific key
       assert :ok = ExJsonschema.Cache.Test.delete("test-key")
       assert {:error, :not_found} = ExJsonschema.Cache.Test.get("test-key")
-      
+
       # Clear all
       ExJsonschema.Cache.Test.put("key1", "value1")
-      ExJsonschema.Cache.Test.put("key2", "value2") 
+      ExJsonschema.Cache.Test.put("key2", "value2")
       assert :ok = ExJsonschema.Cache.Test.clear()
       assert {:error, :not_found} = ExJsonschema.Cache.Test.get("key1")
       assert {:error, :not_found} = ExJsonschema.Cache.Test.get("key2")
@@ -118,13 +118,13 @@ defmodule ExJsonschema.CacheBehaviorTest do
     test "NoopCache disables caching" do
       # Temporarily switch to NoopCache
       Application.put_env(:ex_jsonschema, :cache, ExJsonschema.Cache.Noop)
-      
+
       schema = ~s({"$id": "http://example.com/noop-test.json", "type": "string"})
-      
+
       # Compile multiple times - should get different references each time  
       {:ok, validator1} = ExJsonschema.compile(schema)
       {:ok, validator2} = ExJsonschema.compile(schema)
-      
+
       # With NoopCache, each compilation creates a new validator
       assert validator1 != validator2
     end

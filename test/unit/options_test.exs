@@ -195,7 +195,8 @@ defmodule ExJsonschema.OptionsTest do
       assert is_boolean(opts.collect_annotations)
       assert is_boolean(opts.stop_on_first_error)
       assert is_boolean(opts.resolve_external_refs)
-      assert is_atom(opts.regex_engine)  # Test a different field instead
+      # Test a different field instead
+      assert is_atom(opts.regex_engine)
       assert is_boolean(opts.include_schema_path)
       assert is_boolean(opts.include_instance_path)
       assert is_boolean(opts.allow_remote_references)
@@ -215,7 +216,7 @@ defmodule ExJsonschema.OptionsTest do
     test "nil-able fields accept nil values" do
       # No nil-able fields remaining after retriever removal
       opts = Options.new()
-      
+
       # Just verify the struct is valid
       assert %Options{} = opts
     end

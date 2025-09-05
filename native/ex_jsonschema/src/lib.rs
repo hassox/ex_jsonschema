@@ -20,6 +20,14 @@ mod atoms {
         draft7,
         draft201909,
         draft202012,
+        // Regex engines
+        fancy_regex,
+        regex,
+        // Additional atoms for validation options
+        true_atom = "true",
+        false_atom = "false",
+        type_ = "type",
+        message = "message",
     }
 }
 
@@ -51,6 +59,18 @@ pub struct VerboseValidationErrorDetail {
     pub context: HashMap<String, Value>,
     pub annotations: HashMap<String, Value>,
     pub suggestions: Vec<String>,
+}
+
+#[derive(rustler::NifStruct)]
+#[module = "ExJsonschema.Native.ValidationOptions"]
+pub struct ValidationOptionsStruct {
+    pub draft: Atom,
+    pub validate_formats: bool,
+    pub ignore_unknown_formats: bool,
+    pub collect_annotations: bool,
+    pub regex_engine: Atom,
+    pub resolve_external_refs: bool,
+    pub stop_on_first_error: bool,
 }
 
 pub struct CompiledSchema {
@@ -90,6 +110,57 @@ impl CompiledSchema {
             jsonschema::validator_for(&schema)
                 .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?
         };
+
+        Ok(CompiledSchema {
+            validator: AssertUnwindSafe(validator),
+            schema: schema.clone(),
+        })
+    }
+
+    fn new_with_options(schema: Value, options: ValidationOptionsStruct) -> Result<Self, JsonSchemaError> {
+        // Start with the jsonschema::options() builder
+        let mut builder = jsonschema::options();
+
+        // Set draft version if not auto
+        if options.draft != atoms::auto() {
+            builder = if options.draft == atoms::draft4() {
+                builder.with_draft(jsonschema::Draft::Draft4)
+            } else if options.draft == atoms::draft6() {
+                builder.with_draft(jsonschema::Draft::Draft6)
+            } else if options.draft == atoms::draft7() {
+                builder.with_draft(jsonschema::Draft::Draft7)
+            } else if options.draft == atoms::draft201909() {
+                builder.with_draft(jsonschema::Draft::Draft201909)
+            } else if options.draft == atoms::draft202012() {
+                builder.with_draft(jsonschema::Draft::Draft202012)
+            } else {
+                builder // Unknown draft, use default
+            };
+        }
+
+        // Configure format validation
+        if options.validate_formats {
+            builder = builder.should_validate_formats(true);
+        }
+
+        // Configure regex engine for security
+        if options.regex_engine == atoms::regex() {
+            // Use safer regex engine
+            builder = builder.with_pattern_options(
+                jsonschema::PatternOptions::regex()
+            );
+        } else {
+            // Use fancy_regex with security limits  
+            builder = builder.with_pattern_options(
+                jsonschema::PatternOptions::fancy_regex()
+                    .backtrack_limit(10_000)
+            );
+        }
+
+        // Build the validator
+        let validator = builder
+            .build(&schema)
+            .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?;
 
         Ok(CompiledSchema {
             validator: AssertUnwindSafe(validator),
@@ -938,6 +1009,36 @@ fn meta_validate_detailed(env: Env, schema_json: String) -> Term {
             (atoms::error(), vec![error_details]).encode(env)
         }
     }
+}
+
+#[rustler::nif]
+fn compile_schema_with_options(env: Env, schema_json: String, options: ValidationOptionsStruct) -> Term {
+    let schema_value: Value = match serde_json::from_str(&schema_json) {
+        Ok(value) => value,
+        Err(e) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "json_parse_error".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), e.to_string().encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+    };
+
+    let compiled = match CompiledSchema::new_with_options(schema_value, options) {
+        Ok(compiled) => compiled,
+        Err(e) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "compilation_error".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), e.to_string().encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+    };
+
+    let resource = ResourceArc::new(compiled);
+    (atoms::ok(), resource).encode(env)
 }
 
 rustler::init!("Elixir.ExJsonschema.Native");

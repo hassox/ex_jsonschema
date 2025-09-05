@@ -46,8 +46,6 @@ defmodule ExJsonschema.Profile do
       # Development/debugging profile  
       debug_profile = ExJsonschema.Options.new(
         output_format: :verbose,
-        include_schema_path: true,
-        include_instance_path: true,
         collect_annotations: true
       )
       
@@ -123,15 +121,9 @@ defmodule ExJsonschema.Profile do
 
       # Output - comprehensive error information
       output_format: :verbose,
-      include_schema_path: true,
-      include_instance_path: true,
 
       # External references - security-focused  
       resolve_external_refs: false,
-      allow_remote_references: false,
-      # Conservative limit
-      max_reference_depth: 5,
-      trusted_domains: [],
 
       # Performance - quality over speed
       regex_engine: :fancy_regex,
@@ -201,17 +193,10 @@ defmodule ExJsonschema.Profile do
 
       # Output - informative but not overwhelming
       output_format: :detailed,
-      include_schema_path: true,
-      include_instance_path: true,
 
       # External references - controlled flexibility
       # Conservative default
       resolve_external_refs: false,
-      # Can be overridden
-      allow_remote_references: false,
-      # Slightly more generous
-      max_reference_depth: 8,
-      trusted_domains: [],
 
       # Performance - balanced approach
       # Better user experience
@@ -285,16 +270,9 @@ defmodule ExJsonschema.Profile do
 
       # Output - minimal information
       output_format: :basic,
-      # Reduce processing
-      include_schema_path: false,
-      include_instance_path: false,
 
       # External references - disabled for speed
       resolve_external_refs: false,
-      allow_remote_references: false,
-      # Conservative to prevent deep recursion
-      max_reference_depth: 3,
-      trusted_domains: [],
 
       # Performance - maximum optimization
       # Faster regex engine

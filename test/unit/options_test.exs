@@ -15,12 +15,7 @@ defmodule ExJsonschema.OptionsTest do
       assert opts.stop_on_first_error == false
       assert opts.resolve_external_refs == false
       assert opts.regex_engine == :fancy_regex
-      assert opts.output_format == :basic
-      assert opts.include_schema_path == true
-      assert opts.include_instance_path == true
-      assert opts.max_reference_depth == 10
-      assert opts.allow_remote_references == false
-      assert opts.trusted_domains == []
+      assert opts.output_format == :detailed
     end
 
     test "creates options with overrides" do
@@ -30,14 +25,14 @@ defmodule ExJsonschema.OptionsTest do
           validate_formats: true,
           ignore_unknown_formats: false,
           regex_engine: :regex,
-          max_reference_depth: 5
+          output_format: :basic
         )
 
       assert opts.draft == :draft202012
       assert opts.validate_formats == true
       assert opts.ignore_unknown_formats == false
       assert opts.regex_engine == :regex
-      assert opts.max_reference_depth == 5
+      assert opts.output_format == :basic
 
       # Other fields should remain default
       assert opts.collect_annotations == true
@@ -85,8 +80,8 @@ defmodule ExJsonschema.OptionsTest do
           draft: :draft202012,
           regex_engine: :fancy_regex,
           output_format: :detailed,
-          max_reference_depth: 15,
-          trusted_domains: ["example.com", "api.service.org"]
+          validate_formats: true,
+          collect_annotations: false
         )
 
       assert {:ok, ^opts} = Options.validate(opts)
@@ -110,25 +105,6 @@ defmodule ExJsonschema.OptionsTest do
       assert {:error, "Invalid output format: :invalid_format"} = Options.validate(opts)
     end
 
-    test "rejects negative reference depth" do
-      opts = %Options{max_reference_depth: -1}
-
-      assert {:error, "Reference depth must be a non-negative integer, got: -1"} =
-               Options.validate(opts)
-    end
-
-    test "rejects invalid trusted domains" do
-      opts = %Options{trusted_domains: ["valid.com", 123]}
-
-      assert {:error, "Trusted domains must be a list of strings"} = Options.validate(opts)
-    end
-
-    test "rejects non-list trusted domains" do
-      opts = %Options{trusted_domains: "not a list"}
-
-      assert {:error, "Trusted domains must be a list, got: \"not a list\""} =
-               Options.validate(opts)
-    end
   end
 
   describe "option combinations" do
@@ -155,30 +131,28 @@ defmodule ExJsonschema.OptionsTest do
           regex_engine: :regex,
           collect_annotations: false,
           stop_on_first_error: true,
-          output_format: :flag
+          output_format: :basic
         )
 
       assert {:ok, _} = Options.validate(opts)
       assert opts.regex_engine == :regex
       assert opts.collect_annotations == false
       assert opts.stop_on_first_error == true
-      assert opts.output_format == :flag
+      assert opts.output_format == :basic
     end
 
-    test "security-focused profile" do
+    test "external references profile" do
       opts =
         Options.new(
-          allow_remote_references: true,
-          trusted_domains: ["api.trusted.com", "schemas.mycompany.org"],
-          max_reference_depth: 3,
-          resolve_external_refs: true
+          resolve_external_refs: true,
+          validate_formats: true,
+          output_format: :verbose
         )
 
       assert {:ok, _} = Options.validate(opts)
-      assert opts.allow_remote_references == true
-      assert opts.trusted_domains == ["api.trusted.com", "schemas.mycompany.org"]
-      assert opts.max_reference_depth == 3
       assert opts.resolve_external_refs == true
+      assert opts.validate_formats == true
+      assert opts.output_format == :verbose
     end
   end
 
@@ -195,22 +169,10 @@ defmodule ExJsonschema.OptionsTest do
       assert is_boolean(opts.collect_annotations)
       assert is_boolean(opts.stop_on_first_error)
       assert is_boolean(opts.resolve_external_refs)
-      # Test a different field instead
-      assert is_atom(opts.regex_engine)
-      assert is_boolean(opts.include_schema_path)
-      assert is_boolean(opts.include_instance_path)
-      assert is_boolean(opts.allow_remote_references)
 
       # Atom fields
       assert is_atom(opts.regex_engine)
       assert is_atom(opts.output_format)
-
-      # Numeric fields
-      assert is_integer(opts.max_reference_depth)
-      assert opts.max_reference_depth >= 0
-
-      # List fields
-      assert is_list(opts.trusted_domains)
     end
 
     test "nil-able fields accept nil values" do

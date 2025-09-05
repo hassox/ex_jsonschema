@@ -58,7 +58,6 @@ defmodule ExJsonschema.Options do
   @typedoc """
   Output format for validation results.
 
-  - `:flag` - Simple boolean result (fastest)
   - `:basic` - `:ok` or `{:error, :validation_failed}` 
   - `:detailed` - Structured error information with paths and messages (default)
   - `:verbose` - Comprehensive error details with context, values, and suggestions
@@ -67,7 +66,8 @@ defmodule ExJsonschema.Options do
   Use `:detailed` for structured error handling. Use `:verbose` for debugging
   and user-friendly error reporting.
   """
-  @type output_format :: :flag | :basic | :detailed | :verbose
+  @type output_format :: :basic | :detailed | :verbose
+
 
   defstruct [
     # Draft specification
@@ -86,14 +86,7 @@ defmodule ExJsonschema.Options do
     regex_engine: :fancy_regex,
 
     # Output control
-    output_format: :basic,
-    include_schema_path: true,
-    include_instance_path: true,
-
-    # Security settings
-    max_reference_depth: 10,
-    allow_remote_references: false,
-    trusted_domains: []
+    output_format: :detailed
   ]
 
   @type t :: %__MODULE__{
@@ -104,12 +97,7 @@ defmodule ExJsonschema.Options do
           stop_on_first_error: boolean(),
           resolve_external_refs: boolean(),
           regex_engine: regex_engine(),
-          output_format: output_format(),
-          include_schema_path: boolean(),
-          include_instance_path: boolean(),
-          max_reference_depth: non_neg_integer(),
-          allow_remote_references: boolean(),
-          trusted_domains: [String.t()]
+          output_format: output_format()
         }
 
   @doc """
@@ -124,12 +112,7 @@ defmodule ExJsonschema.Options do
     * `:stop_on_first_error` - Stop validation on first error (default: `false`)
     * `:resolve_external_refs` - Resolve external references (default: `false`)
     * `:regex_engine` - Regex engine to use (default: `:fancy_regex`)
-    * `:output_format` - Error output format (default: `:basic`)
-    * `:include_schema_path` - Include schema path in errors (default: `true`)
-    * `:include_instance_path` - Include instance path in errors (default: `true`)
-    * `:max_reference_depth` - Maximum reference resolution depth (default: `10`)
-    * `:allow_remote_references` - Allow HTTP/HTTPS references (default: `false`)
-    * `:trusted_domains` - List of trusted domains for remote references (default: `[]`)
+    * `:output_format` - Error output format (default: `:detailed`)
 
   ## Examples
 
@@ -149,9 +132,9 @@ defmodule ExJsonschema.Options do
       iex> opts.validate_formats
       true
       
-      iex> opts = ExJsonschema.Options.new({:performance, [output_format: :detailed]})
+      iex> opts = ExJsonschema.Options.new({:performance, [output_format: :basic]})
       iex> {opts.output_format, opts.collect_annotations}
-      {:detailed, false}
+      {:basic, false}
   """
   def new(profile_or_overrides \\ [])
 
@@ -180,9 +163,9 @@ defmodule ExJsonschema.Options do
       iex> opts.validate_formats
       true
       
-      iex> opts = ExJsonschema.Options.profile(:performance, output_format: :detailed)
+      iex> opts = ExJsonschema.Options.profile(:performance, output_format: :basic)
       iex> {opts.output_format, opts.collect_annotations}
-      {:detailed, false}
+      {:basic, false}
   """
   def profile(profile_name, overrides \\ []) do
     ExJsonschema.Profile.get(profile_name, overrides)
@@ -249,9 +232,7 @@ defmodule ExJsonschema.Options do
   def validate(%__MODULE__{} = options) do
     with :ok <- validate_draft(options.draft),
          :ok <- validate_regex_engine(options.regex_engine),
-         :ok <- validate_output_format(options.output_format),
-         :ok <- validate_reference_depth(options.max_reference_depth),
-         :ok <- validate_trusted_domains(options.trusted_domains) do
+         :ok <- validate_output_format(options.output_format) do
       {:ok, options}
     end
   end
@@ -265,22 +246,6 @@ defmodule ExJsonschema.Options do
   defp validate_regex_engine(engine) when engine in [:fancy_regex, :regex], do: :ok
   defp validate_regex_engine(engine), do: {:error, "Invalid regex engine: #{inspect(engine)}"}
 
-  defp validate_output_format(format) when format in [:flag, :basic, :detailed, :verbose], do: :ok
+  defp validate_output_format(format) when format in [:basic, :detailed, :verbose], do: :ok
   defp validate_output_format(format), do: {:error, "Invalid output format: #{inspect(format)}"}
-
-  defp validate_reference_depth(depth) when is_integer(depth) and depth >= 0, do: :ok
-
-  defp validate_reference_depth(depth),
-    do: {:error, "Reference depth must be a non-negative integer, got: #{inspect(depth)}"}
-
-  defp validate_trusted_domains(domains) when is_list(domains) do
-    if Enum.all?(domains, &is_binary/1) do
-      :ok
-    else
-      {:error, "Trusted domains must be a list of strings"}
-    end
-  end
-
-  defp validate_trusted_domains(domains),
-    do: {:error, "Trusted domains must be a list, got: #{inspect(domains)}"}
 end

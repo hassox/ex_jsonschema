@@ -16,12 +16,7 @@ defmodule ExJsonschema.ProfileTest do
       assert opts.collect_annotations == true
       assert opts.stop_on_first_error == false
       assert opts.output_format == :verbose
-      assert opts.include_schema_path == true
-      assert opts.include_instance_path == true
       assert opts.resolve_external_refs == false
-      assert opts.allow_remote_references == false
-      assert opts.max_reference_depth == 5
-      assert opts.trusted_domains == []
       assert opts.regex_engine == :fancy_regex
       assert opts.draft == :draft202012
     end
@@ -37,11 +32,11 @@ defmodule ExJsonschema.ProfileTest do
     end
 
     test "maintains strict character with overrides" do
-      opts = Profile.strict(draft: :auto, max_reference_depth: 10)
+      opts = Profile.strict(draft: :auto, regex_engine: :regex)
 
       # Override applied
       assert opts.draft == :auto
-      assert opts.max_reference_depth == 10
+      assert opts.regex_engine == :regex
       # Strict character maintained
       assert opts.validate_formats == true
       assert opts.ignore_unknown_formats == false
@@ -59,12 +54,7 @@ defmodule ExJsonschema.ProfileTest do
       assert opts.collect_annotations == true
       assert opts.stop_on_first_error == false
       assert opts.output_format == :detailed
-      assert opts.include_schema_path == true
-      assert opts.include_instance_path == true
       assert opts.resolve_external_refs == false
-      assert opts.allow_remote_references == false
-      assert opts.max_reference_depth == 8
-      assert opts.trusted_domains == []
       assert opts.regex_engine == :fancy_regex
       assert opts.draft == :auto
     end
@@ -101,12 +91,7 @@ defmodule ExJsonschema.ProfileTest do
       assert opts.collect_annotations == false
       assert opts.stop_on_first_error == true
       assert opts.output_format == :basic
-      assert opts.include_schema_path == false
-      assert opts.include_instance_path == false
       assert opts.resolve_external_refs == false
-      assert opts.allow_remote_references == false
-      assert opts.max_reference_depth == 3
-      assert opts.trusted_domains == []
       assert opts.regex_engine == :regex
       assert opts.draft == :draft202012
     end
@@ -122,16 +107,15 @@ defmodule ExJsonschema.ProfileTest do
     end
 
     test "maintains performance character with overrides" do
-      opts = Profile.performance(draft: :auto, max_reference_depth: 10)
+      opts = Profile.performance(draft: :auto, output_format: :detailed)
 
       # Override applied
       assert opts.draft == :auto
-      assert opts.max_reference_depth == 10
+      assert opts.output_format == :detailed
       # Performance character maintained
       assert opts.collect_annotations == false
       assert opts.stop_on_first_error == true
       assert opts.regex_engine == :regex
-      assert opts.output_format == :basic
     end
   end
 
@@ -213,7 +197,6 @@ defmodule ExJsonschema.ProfileTest do
       assert diff[:validate_formats] == {true, false}
       assert diff[:ignore_unknown_formats] == {false, true}
       assert diff[:output_format] == {:verbose, :detailed}
-      assert diff[:max_reference_depth] == {5, 8}
       assert diff[:draft] == {:draft202012, :auto}
 
       # Should not include identical values
@@ -229,10 +212,7 @@ defmodule ExJsonschema.ProfileTest do
       assert diff[:collect_annotations] == {true, false}
       assert diff[:stop_on_first_error] == {false, true}
       assert diff[:output_format] == {:verbose, :basic}
-      assert diff[:include_schema_path] == {true, false}
-      assert diff[:include_instance_path] == {true, false}
       assert diff[:regex_engine] == {:fancy_regex, :regex}
-      assert diff[:max_reference_depth] == {5, 3}
     end
 
     test "compares lenient vs performance profiles" do
@@ -242,10 +222,7 @@ defmodule ExJsonschema.ProfileTest do
       assert diff[:collect_annotations] == {true, false}
       assert diff[:stop_on_first_error] == {false, true}
       assert diff[:output_format] == {:detailed, :basic}
-      assert diff[:include_schema_path] == {true, false}
-      assert diff[:include_instance_path] == {true, false}
       assert diff[:regex_engine] == {:fancy_regex, :regex}
-      assert diff[:max_reference_depth] == {8, 3}
       assert diff[:draft] == {:auto, :draft202012}
     end
 
@@ -282,12 +259,6 @@ defmodule ExJsonschema.ProfileTest do
 
       # Comprehensive output
       assert opts.output_format == :verbose
-      assert opts.include_schema_path == true
-      assert opts.include_instance_path == true
-
-      # Security-focused
-      assert opts.allow_remote_references == false
-      assert opts.max_reference_depth <= 5
 
       # Quality over speed
       assert opts.regex_engine == :fancy_regex
@@ -304,13 +275,9 @@ defmodule ExJsonschema.ProfileTest do
 
       # Informative but not overwhelming
       assert opts.output_format == :detailed
-      assert opts.include_schema_path == true
-      assert opts.include_instance_path == true
 
       # Flexible draft handling
       assert opts.draft == :auto
-      # More generous than strict
-      assert opts.max_reference_depth >= 5
 
       # Good user experience
       assert opts.regex_engine == :fancy_regex
@@ -326,14 +293,9 @@ defmodule ExJsonschema.ProfileTest do
 
       # Minimal output
       assert opts.output_format == :basic
-      assert opts.include_schema_path == false
-      assert opts.include_instance_path == false
 
       # No external references
       assert opts.resolve_external_refs == false
-      assert opts.allow_remote_references == false
-      # Conservative
-      assert opts.max_reference_depth <= 5
 
       # Performance optimizations
       assert opts.regex_engine == :regex

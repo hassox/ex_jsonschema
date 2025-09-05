@@ -65,11 +65,9 @@ defmodule ExJsonschema.AdditionalEdgeCasesTest do
         ExJsonschema.Options.new(
           draft: :draft4,
           regex_engine: :regex,
-          output_format: :flag,
-          # Edge case: zero depth
-          max_reference_depth: 0,
-          # Edge case: empty list
-          trusted_domains: []
+          output_format: :basic,
+          collect_annotations: false,
+          stop_on_first_error: true
         )
 
       assert {:ok, ^opts} = ExJsonschema.Options.validate(opts)

@@ -552,7 +552,7 @@ fn encode_json_value<'a>(env: Env<'a>, value: &Value) -> Term<'a> {
 fn extract_keyword_from_error(error: &jsonschema::ValidationError) -> String {
     // Extract the keyword from the schema path or error kind
     let schema_path = error.schema_path.to_string();
-    if let Some(last_segment) = schema_path.split('/').last() {
+    if let Some(last_segment) = schema_path.split('/').next_back() {
         match last_segment {
             "type" => "type".to_string(),
             "minimum" => "minimum".to_string(),
@@ -602,7 +602,7 @@ fn get_schema_constraint_value(error: &jsonschema::ValidationError, schema: &Val
             | "const" | "enum" | "multipleOf" => schema_location.clone(),
             "type" => {
                 // Navigate up one level to get the type constraint
-                let parent_path = schema_path.rsplitn(2, '/').nth(1).unwrap_or("");
+                let parent_path = schema_path.rsplit_once('/').map(|x| x.0).unwrap_or("");
                 if let Some(parent) = get_value_at_path(schema, parent_path) {
                     if let Some(type_val) = parent.get("type") {
                         return type_val.clone();
@@ -612,7 +612,7 @@ fn get_schema_constraint_value(error: &jsonschema::ValidationError, schema: &Val
             }
             "pattern" => {
                 // Navigate up to get the pattern value
-                let parent_path = schema_path.rsplitn(2, '/').nth(1).unwrap_or("");
+                let parent_path = schema_path.rsplit_once('/').map(|x| x.0).unwrap_or("");
                 if let Some(parent) = get_value_at_path(schema, parent_path) {
                     if let Some(pattern_val) = parent.get("pattern") {
                         return pattern_val.clone();
@@ -622,7 +622,7 @@ fn get_schema_constraint_value(error: &jsonschema::ValidationError, schema: &Val
             }
             "required" => {
                 // Get the required property list
-                let parent_path = schema_path.rsplitn(2, '/').nth(1).unwrap_or("");
+                let parent_path = schema_path.rsplit_once('/').map(|x| x.0).unwrap_or("");
                 if let Some(parent) = get_value_at_path(schema, parent_path) {
                     if let Some(required_val) = parent.get("required") {
                         return required_val.clone();
@@ -834,44 +834,39 @@ fn extract_annotations_from_error(
 
     // Get the schema location where the error occurred
     let schema_path = error.schema_path.to_string();
-    if let Some(schema_location) = get_value_at_path(schema, &schema_path) {
+    if let Some(Value::Object(schema_obj)) = get_value_at_path(schema, &schema_path) {
         // Extract common annotations that might be present
-        if let Value::Object(schema_obj) = schema_location {
-            // Add title annotation if present
-            if let Some(title) = schema_obj.get("title") {
-                annotations.insert("title".to_string(), title.clone());
-            }
+        // Add title annotation if present
+        if let Some(title) = schema_obj.get("title") {
+            annotations.insert("title".to_string(), title.clone());
+        }
 
-            // Add description annotation if present
-            if let Some(description) = schema_obj.get("description") {
-                annotations.insert("description".to_string(), description.clone());
-            }
+        // Add description annotation if present
+        if let Some(description) = schema_obj.get("description") {
+            annotations.insert("description".to_string(), description.clone());
+        }
 
-            // Add examples if present
-            if let Some(examples) = schema_obj.get("examples") {
-                annotations.insert("examples".to_string(), examples.clone());
-            }
+        // Add examples if present
+        if let Some(examples) = schema_obj.get("examples") {
+            annotations.insert("examples".to_string(), examples.clone());
+        }
 
-            // Add default value if present
-            if let Some(default) = schema_obj.get("default") {
-                annotations.insert("default".to_string(), default.clone());
-            }
+        // Add default value if present
+        if let Some(default) = schema_obj.get("default") {
+            annotations.insert("default".to_string(), default.clone());
         }
     }
 
     // For parent schema annotations, check one level up
-    let parent_path = schema_path.rsplitn(2, '/').nth(1).unwrap_or("");
+    let parent_path = schema_path.rsplit_once('/').map(|x| x.0).unwrap_or("");
     if !parent_path.is_empty() {
-        if let Some(parent_location) = get_value_at_path(schema, parent_path) {
-            if let Value::Object(parent_obj) = parent_location {
-                // Add parent title/description with "parent_" prefix
-                if let Some(parent_title) = parent_obj.get("title") {
-                    annotations.insert("parent_title".to_string(), parent_title.clone());
-                }
-                if let Some(parent_description) = parent_obj.get("description") {
-                    annotations
-                        .insert("parent_description".to_string(), parent_description.clone());
-                }
+        if let Some(Value::Object(parent_obj)) = get_value_at_path(schema, parent_path) {
+            // Add parent title/description with "parent_" prefix
+            if let Some(parent_title) = parent_obj.get("title") {
+                annotations.insert("parent_title".to_string(), parent_title.clone());
+            }
+            if let Some(parent_description) = parent_obj.get("description") {
+                annotations.insert("parent_description".to_string(), parent_description.clone());
             }
         }
     }

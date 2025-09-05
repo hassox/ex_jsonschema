@@ -427,6 +427,23 @@ api_response_schema = ~s({
 })
 ```
 
+## 📋 TODOs & Future Features
+
+### Planned Features
+- **External Schema References**: Support for resolving `$ref` to external URLs and files
+- **Custom Format Validators**: Register custom string format validation functions  
+- **Schema Composition Utilities**: Helper functions for combining and extending schemas
+- **Streaming Validation**: Support for validating large JSON streams
+- **Performance Monitoring**: Enhanced metrics collection and reporting
+- **OpenAPI Integration**: First-class support for OpenAPI 3.x schema validation
+
+### Known Limitations
+- External schema references (`$ref` to URLs/files) are not currently supported
+- Custom format validators must be implemented in Rust, not Elixir
+- Some advanced JSON Schema features depend on upstream jsonschema-rs crate support
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
 ## 🔧 Development
 
 ### Requirements

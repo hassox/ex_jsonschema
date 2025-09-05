@@ -4,9 +4,7 @@ defmodule ExJsonschema.Options do
 
   This module provides a structured way to configure JSON Schema operations, including:
   - Draft version selection
-  - Validation behavior control  
   - Format validation settings
-  - External reference handling
   - Performance optimizations
 
   ## Examples
@@ -17,13 +15,11 @@ defmodule ExJsonschema.Options do
       # Strict validation with format checking
       opts = ExJsonschema.Options.new(
         draft: :draft202012,
-        validate_formats: true,
-        ignore_unknown_formats: false
+        validate_formats: true
       )
       
       # Performance-optimized options
       opts = ExJsonschema.Options.new(
-        collect_annotations: false,
         regex_engine: :regex
       )
   """
@@ -75,12 +71,6 @@ defmodule ExJsonschema.Options do
 
     # Validation behavior
     validate_formats: false,
-    ignore_unknown_formats: true,
-    collect_annotations: true,
-    stop_on_first_error: false,
-
-    # External references  
-    resolve_external_refs: false,
 
     # Performance settings
     regex_engine: :fancy_regex,
@@ -92,10 +82,6 @@ defmodule ExJsonschema.Options do
   @type t :: %__MODULE__{
           draft: draft(),
           validate_formats: boolean(),
-          ignore_unknown_formats: boolean(),
-          collect_annotations: boolean(),
-          stop_on_first_error: boolean(),
-          resolve_external_refs: boolean(),
           regex_engine: regex_engine(),
           output_format: output_format()
         }
@@ -107,10 +93,6 @@ defmodule ExJsonschema.Options do
 
     * `:draft` - JSON Schema draft to use (default: `:auto`)
     * `:validate_formats` - Enable format validation (default: `false`)
-    * `:ignore_unknown_formats` - Ignore unknown format assertions (default: `true`)
-    * `:collect_annotations` - Collect annotations during validation (default: `true`) 
-    * `:stop_on_first_error` - Stop validation on first error (default: `false`)
-    * `:resolve_external_refs` - Resolve external references (default: `false`)
     * `:regex_engine` - Regex engine to use (default: `:fancy_regex`)
     * `:output_format` - Error output format (default: `:detailed`)
 
@@ -133,8 +115,8 @@ defmodule ExJsonschema.Options do
       true
       
       iex> opts = ExJsonschema.Options.new({:performance, [output_format: :basic]})
-      iex> {opts.output_format, opts.collect_annotations}
-      {:basic, false}
+      iex> opts.output_format
+      :basic
   """
   def new(profile_or_overrides \\ [])
 
@@ -164,8 +146,8 @@ defmodule ExJsonschema.Options do
       true
       
       iex> opts = ExJsonschema.Options.profile(:performance, output_format: :basic)
-      iex> {opts.output_format, opts.collect_annotations}
-      {:basic, false}
+      iex> opts.output_format
+      :basic
   """
   def profile(profile_name, overrides \\ []) do
     ExJsonschema.Profile.get(profile_name, overrides)

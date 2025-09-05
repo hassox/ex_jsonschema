@@ -39,20 +39,17 @@ defmodule ExJsonschema.Profile do
       api_profile = ExJsonschema.Options.new(
         validate_formats: true,
         output_format: :detailed,
-        stop_on_first_error: true,
         draft: :draft7
       )
       
       # Development/debugging profile  
       debug_profile = ExJsonschema.Options.new(
-        output_format: :verbose,
-        collect_annotations: true
+        output_format: :verbose
       )
       
       # Production microservice profile
       micro_profile = ExJsonschema.Options.new(
         output_format: :basic,
-        stop_on_first_error: true,
         regex_engine: :regex
       )
       
@@ -78,10 +75,8 @@ defmodule ExJsonschema.Profile do
 
   ## Configuration Highlights
 
-  - **Maximum validation**: All formats validated, unknown formats rejected
-  - **Security-focused**: Remote references disabled, limited reference depth
+  - **Maximum validation**: All formats validated
   - **Comprehensive errors**: Verbose output with full context and suggestions
-  - **Annotation collection**: Enabled for complete schema information
   - **No performance shortcuts**: Quality over speed
 
   ## Use Cases
@@ -99,8 +94,8 @@ defmodule ExJsonschema.Profile do
       # Strict but with basic error format for performance
       ExJsonschema.Profile.strict(output_format: :basic)
       
-      # Strict but stop on first error
-      ExJsonschema.Profile.strict(stop_on_first_error: true)
+      # Strict but with different regex engine
+      ExJsonschema.Profile.strict(regex_engine: :regex)
 
   ## Examples
 
@@ -115,15 +110,9 @@ defmodule ExJsonschema.Profile do
     strict_defaults = [
       # Validation behavior - maximum rigor
       validate_formats: true,
-      ignore_unknown_formats: false,
-      collect_annotations: true,
-      stop_on_first_error: false,
 
       # Output - comprehensive error information
       output_format: :verbose,
-
-      # External references - security-focused  
-      resolve_external_refs: false,
 
       # Performance - quality over speed
       regex_engine: :fancy_regex,
@@ -146,10 +135,8 @@ defmodule ExJsonschema.Profile do
 
   ## Configuration Highlights
 
-  - **Forgiving validation**: Unknown formats ignored, less strict parsing
   - **User-friendly errors**: Detailed format with helpful messages
   - **Flexible drafts**: Automatic draft detection for mixed schemas
-  - **Moderate security**: Controlled external reference resolution
   - **Balanced performance**: Good speed without sacrificing essential features
 
   ## Use Cases
@@ -167,8 +154,8 @@ defmodule ExJsonschema.Profile do
       # Lenient but with format validation for critical fields
       ExJsonschema.Profile.lenient(validate_formats: true)
       
-      # Lenient but disable annotations for better performance
-      ExJsonschema.Profile.lenient(collect_annotations: false)
+      # Lenient but with different output format
+      ExJsonschema.Profile.lenient(output_format: :verbose)
 
   ## Examples
 
@@ -182,24 +169,12 @@ defmodule ExJsonschema.Profile do
   def lenient(overrides \\ []) do
     lenient_defaults = [
       # Validation behavior - user-friendly
-      # Less strict for user input
       validate_formats: false,
-      # Ignore custom formats
-      ignore_unknown_formats: true,
-      # Helpful for UX
-      collect_annotations: true,
-      # Show all issues
-      stop_on_first_error: false,
 
       # Output - informative but not overwhelming
       output_format: :detailed,
 
-      # External references - controlled flexibility
-      # Conservative default
-      resolve_external_refs: false,
-
       # Performance - balanced approach
-      # Better user experience
       regex_engine: :fancy_regex,
 
       # Draft - automatic detection for mixed environments
@@ -220,10 +195,9 @@ defmodule ExJsonschema.Profile do
 
   ## Configuration Highlights
 
-  - **Maximum speed**: Minimal validation features, fast-fail behavior
+  - **Maximum speed**: Minimal validation features
   - **Lightweight errors**: Basic error format, essential information only
-  - **Performance shortcuts**: Simple regex engine, no annotations
-  - **Minimal overhead**: Disabled features that impact throughput
+  - **Performance shortcuts**: Simple regex engine
   - **Memory efficient**: Optimized for high-volume processing
 
   ## Use Cases
@@ -259,27 +233,15 @@ defmodule ExJsonschema.Profile do
   def performance(overrides \\ []) do
     performance_defaults = [
       # Validation behavior - speed focused
-      # Skip expensive format checks
       validate_formats: false,
-      # Don't process unknown formats
-      ignore_unknown_formats: true,
-      # Skip annotation collection
-      collect_annotations: false,
-      # Fast-fail behavior
-      stop_on_first_error: true,
 
       # Output - minimal information
       output_format: :basic,
 
-      # External references - disabled for speed
-      resolve_external_refs: false,
-
       # Performance - maximum optimization
-      # Faster regex engine
       regex_engine: :regex,
 
       # Draft - explicit for consistency
-      # Avoid auto-detection overhead
       draft: :draft202012
     ]
 

@@ -12,7 +12,7 @@
 
 | Category | Status | Progress | Priority | Notes |
 |----------|--------|----------|----------|-------|
-| **Review & Polish** | ⚪ Not Started | 0/5 tasks | Critical | Core functionality review |
+| **Review & Polish** | 🟢 Complete | 5/5 tasks | Critical | Core functionality review |
 | **Documentation** | ⚪ Not Started | 0/4 tasks | High | User-facing guides |
 | **Deploy Preparation** | ⚪ Not Started | 0/4 tasks | Critical | Release readiness |
 
@@ -23,16 +23,16 @@
 ## 📋 Review & Polish Tasks
 
 ### WU1: Surface Coherence Review
-**Status**: ⚪ Not Started  
+**Status**: 🟢 Complete  
 **Priority**: Critical  
 **Objective**: Ensure all surfaces are coherent and leverage Rust optimally
 
 **Tasks**:
 - [x] **WU1.1**: Review Options module - remove unused/confusing options
-- [ ] **WU1.2**: Validate all compilation paths use Rust library features
-- [ ] **WU1.3**: Check for redundant Elixir logic that Rust already handles
-- [ ] **WU1.4**: Ensure configuration options map correctly to Rust capabilities
-- [ ] **WU1.5**: Verify sensible defaults throughout the library
+- [x] **WU1.2**: Validate all compilation paths use Rust library features
+- [x] **WU1.3**: Check for redundant Elixir logic that Rust already handles
+- [x] **WU1.4**: Ensure configuration options map correctly to Rust capabilities
+- [x] **WU1.5**: Verify sensible defaults throughout the library
 
 **Acceptance Criteria**:
 - ✅ No unused or confusing options remain
@@ -40,7 +40,14 @@
 - ✅ Clear, coherent API surface
 - ✅ All defaults are sensible for production use
 
-**Completed**: Successfully removed 5 unused options (`include_schema_path`, `include_instance_path`, `max_reference_depth`, `allow_remote_references`, `trusted_domains`) that were not used by the Rust library. All 358 tests passing.
+**Completed**: 
+- **WU1.1**: Successfully removed 5 unused options from initial round (`include_schema_path`, `include_instance_path`, `max_reference_depth`, `allow_remote_references`, `trusted_domains`)
+- **WU1.2**: Validated all compilation paths use optimal Rust library integration via `Native.compile_schema_with_options/2`
+- **WU1.3**: Discovered and fixed fundamental API design flaw - removed 4 additional "aspirational" options (`ignore_unknown_formats`, `collect_annotations`, `stop_on_first_error`, `resolve_external_refs`) that were promised but completely ignored by Rust implementation
+- **WU1.4**: Updated Rust implementation to only use actually supported jsonschema-rs 0.33 features (draft selection, format validation, regex engines)
+- **WU1.5**: Verified all defaults are sensible and consistent (Options, Native.ValidationOptions, and Profiles all aligned)
+
+**Total cleanup**: Removed 9 unused/broken options, streamlined from confusing 13-field Options struct to clean 4-field struct that actually works. Added external reference resolution to README TODO for future development. All 358 tests passing.
 
 ---
 
@@ -263,15 +270,26 @@ mix test --only property
 
 ## 📝 Progress Log
 
-### Current Session
+### Completed Sessions
+
+**Session 1: WRAP_UP.md Creation**
 - Created wrap-up tracking document
 - Identified 9 major wrap-up tasks across 3 categories
 - Established quality gates and success metrics
 
+**Session 2: WU1 Surface Coherence Review (COMPLETED)**
+- **WU1.1 Complete**: Removed 5 unused Options fields (first round)
+- **WU1.2 Complete**: Validated all compilation paths use optimal Rust integration
+- **WU1.3 Complete**: Discovered and removed 4 "half-arsed" options that were completely non-functional
+- **WU1.4 Complete**: Updated Rust implementation to only use supported jsonschema-rs features
+- **WU1.5 Complete**: Verified sensible defaults throughout library
+- **Critical Discovery**: Found fundamental API dishonesty - 4 validation options were promised but silently ignored
+- **Result**: Clean, honest API with only working features. Total: 9 broken options removed, 358 tests passing
+
 ### Next Session Goals
-- Begin WU1: Surface Coherence Review
-- Identify and remove any unused/confusing options
-- Validate Rust library utilization is optimal
+- Begin WU2: Comprehensive Documentation Suite
+- Create getting started and advanced guides
+- Document the cleaned-up API properly
 
 ---
 

@@ -12,23 +12,18 @@ defmodule ExJsonschema.ProfileTest do
 
       assert %Options{} = opts
       assert opts.validate_formats == true
-      assert opts.ignore_unknown_formats == false
-      assert opts.collect_annotations == true
-      assert opts.stop_on_first_error == false
       assert opts.output_format == :verbose
-      assert opts.resolve_external_refs == false
       assert opts.regex_engine == :fancy_regex
       assert opts.draft == :draft202012
     end
 
     test "allows overriding options" do
-      opts = Profile.strict(output_format: :basic, stop_on_first_error: true)
+      opts = Profile.strict(output_format: :basic, draft: :draft7)
 
       assert opts.output_format == :basic
-      assert opts.stop_on_first_error == true
+      assert opts.draft == :draft7
       # Other strict defaults preserved
       assert opts.validate_formats == true
-      assert opts.ignore_unknown_formats == false
     end
 
     test "maintains strict character with overrides" do
@@ -39,7 +34,6 @@ defmodule ExJsonschema.ProfileTest do
       assert opts.regex_engine == :regex
       # Strict character maintained
       assert opts.validate_formats == true
-      assert opts.ignore_unknown_formats == false
       assert opts.output_format == :verbose
     end
   end
@@ -50,22 +44,17 @@ defmodule ExJsonschema.ProfileTest do
 
       assert %Options{} = opts
       assert opts.validate_formats == false
-      assert opts.ignore_unknown_formats == true
-      assert opts.collect_annotations == true
-      assert opts.stop_on_first_error == false
       assert opts.output_format == :detailed
-      assert opts.resolve_external_refs == false
       assert opts.regex_engine == :fancy_regex
       assert opts.draft == :auto
     end
 
     test "allows overriding options" do
-      opts = Profile.lenient(validate_formats: true, collect_annotations: false)
+      opts = Profile.lenient(validate_formats: true, regex_engine: :regex)
 
       assert opts.validate_formats == true
-      assert opts.collect_annotations == false
+      assert opts.regex_engine == :regex
       # Other lenient defaults preserved
-      assert opts.ignore_unknown_formats == true
       assert opts.output_format == :detailed
     end
 
@@ -77,7 +66,6 @@ defmodule ExJsonschema.ProfileTest do
       assert opts.draft == :draft7
       # Lenient character maintained
       assert opts.validate_formats == false
-      assert opts.ignore_unknown_formats == true
     end
   end
 
@@ -87,11 +75,7 @@ defmodule ExJsonschema.ProfileTest do
 
       assert %Options{} = opts
       assert opts.validate_formats == false
-      assert opts.ignore_unknown_formats == true
-      assert opts.collect_annotations == false
-      assert opts.stop_on_first_error == true
       assert opts.output_format == :basic
-      assert opts.resolve_external_refs == false
       assert opts.regex_engine == :regex
       assert opts.draft == :draft202012
     end
@@ -102,8 +86,7 @@ defmodule ExJsonschema.ProfileTest do
       assert opts.output_format == :detailed
       assert opts.validate_formats == true
       # Other performance defaults preserved
-      assert opts.collect_annotations == false
-      assert opts.stop_on_first_error == true
+      assert opts.regex_engine == :regex
     end
 
     test "maintains performance character with overrides" do
@@ -113,8 +96,6 @@ defmodule ExJsonschema.ProfileTest do
       assert opts.draft == :auto
       assert opts.output_format == :detailed
       # Performance character maintained
-      assert opts.collect_annotations == false
-      assert opts.stop_on_first_error == true
       assert opts.regex_engine == :regex
     end
   end
@@ -150,12 +131,12 @@ defmodule ExJsonschema.ProfileTest do
       lenient_opts = Profile.get(:lenient, validate_formats: true)
       assert lenient_opts.validate_formats == true
       # Lenient character
-      assert lenient_opts.ignore_unknown_formats == true
+      assert lenient_opts.draft == :auto
 
       perf_opts = Profile.get(:performance, output_format: :verbose)
       assert perf_opts.output_format == :verbose
       # Performance character
-      assert perf_opts.collect_annotations == false
+      assert perf_opts.regex_engine == :regex
     end
 
     test "raises error for unknown profile" do
@@ -195,13 +176,11 @@ defmodule ExJsonschema.ProfileTest do
 
       # Should show key differences
       assert diff[:validate_formats] == {true, false}
-      assert diff[:ignore_unknown_formats] == {false, true}
       assert diff[:output_format] == {:verbose, :detailed}
       assert diff[:draft] == {:draft202012, :auto}
 
       # Should not include identical values
-      refute Map.has_key?(diff, :cache)
-      refute Map.has_key?(diff, :resolve_external_refs)
+      refute Map.has_key?(diff, :regex_engine)
     end
 
     test "compares strict vs performance profiles" do
@@ -209,8 +188,6 @@ defmodule ExJsonschema.ProfileTest do
 
       # Should show major differences
       assert diff[:validate_formats] == {true, false}
-      assert diff[:collect_annotations] == {true, false}
-      assert diff[:stop_on_first_error] == {false, true}
       assert diff[:output_format] == {:verbose, :basic}
       assert diff[:regex_engine] == {:fancy_regex, :regex}
     end
@@ -219,8 +196,6 @@ defmodule ExJsonschema.ProfileTest do
       diff = Profile.compare(:lenient, :performance)
 
       # Should show key differences
-      assert diff[:collect_annotations] == {true, false}
-      assert diff[:stop_on_first_error] == {false, true}
       assert diff[:output_format] == {:detailed, :basic}
       assert diff[:regex_engine] == {:fancy_regex, :regex}
       assert diff[:draft] == {:auto, :draft202012}
@@ -253,9 +228,6 @@ defmodule ExJsonschema.ProfileTest do
 
       # Maximum validation
       assert opts.validate_formats == true
-      assert opts.ignore_unknown_formats == false
-      assert opts.collect_annotations == true
-      assert opts.stop_on_first_error == false
 
       # Comprehensive output
       assert opts.output_format == :verbose
@@ -269,9 +241,6 @@ defmodule ExJsonschema.ProfileTest do
 
       # User-friendly validation
       assert opts.validate_formats == false
-      assert opts.ignore_unknown_formats == true
-      assert opts.collect_annotations == true
-      assert opts.stop_on_first_error == false
 
       # Informative but not overwhelming
       assert opts.output_format == :detailed
@@ -288,14 +257,9 @@ defmodule ExJsonschema.ProfileTest do
 
       # Speed-focused validation
       assert opts.validate_formats == false
-      assert opts.collect_annotations == false
-      assert opts.stop_on_first_error == true
 
       # Minimal output
       assert opts.output_format == :basic
-
-      # No external references
-      assert opts.resolve_external_refs == false
 
       # Performance optimizations
       assert opts.regex_engine == :regex

@@ -201,12 +201,12 @@ defmodule ExJsonschema.ValidationOptionsTest do
       end
     end
 
-    test "validates boolean options", %{validator: validator} do
+    test "ignores deprecated validation options but still validates", %{validator: validator} do
       instance = ~s("valid")
 
-      assert_raise ArgumentError, ~r/must be a boolean/, fn ->
-        ExJsonschema.validate(validator, instance, validate_formats: "not a boolean")
-      end
+      # Should still work despite deprecated options (warnings are logged but not tested here)
+      result = ExJsonschema.validate(validator, instance, validate_formats: true, stop_on_first_error: true)
+      assert :ok = result
     end
   end
 

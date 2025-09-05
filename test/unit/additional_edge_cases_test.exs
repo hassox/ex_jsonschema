@@ -36,10 +36,10 @@ defmodule ExJsonschema.AdditionalEdgeCasesTest do
         ExJsonschema.validate(validator, ~s("test"), invalid_option: true)
       end
 
-      # Test invalid boolean value
-      assert_raise ArgumentError, ~r/must be a boolean/, fn ->
-        ExJsonschema.validate(validator, ~s("test"), validate_formats: "not_boolean")
-      end
+      # Deprecated options are now warned about but don't raise errors
+      # This validates the new graceful deprecation behavior
+      result = ExJsonschema.validate(validator, ~s("test"), validate_formats: "not_boolean")
+      assert :ok = result
     end
 
     test "compile with auto draft and various schemas" do

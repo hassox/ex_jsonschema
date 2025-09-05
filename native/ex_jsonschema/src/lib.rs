@@ -66,11 +66,7 @@ pub struct VerboseValidationErrorDetail {
 pub struct ValidationOptionsStruct {
     pub draft: Atom,
     pub validate_formats: bool,
-    pub ignore_unknown_formats: bool,
-    pub collect_annotations: bool,
     pub regex_engine: Atom,
-    pub resolve_external_refs: bool,
-    pub stop_on_first_error: bool,
 }
 
 pub struct CompiledSchema {
@@ -156,6 +152,10 @@ impl CompiledSchema {
                     .backtrack_limit(10_000)
             );
         }
+
+        // All supported options are now implemented above.
+        // External reference resolution, annotation collection, and 
+        // stop-on-first-error are not supported by jsonschema 0.33
 
         // Build the validator
         let validator = builder

@@ -9,20 +9,12 @@ defmodule ExJsonschema.Native.ValidationOptions do
   @type t :: %__MODULE__{
           draft: atom(),
           validate_formats: boolean(),
-          ignore_unknown_formats: boolean(),
-          collect_annotations: boolean(),
-          regex_engine: atom(),
-          resolve_external_refs: boolean(),
-          stop_on_first_error: boolean()
+          regex_engine: atom()
         }
 
   defstruct draft: :auto,
             validate_formats: false,
-            ignore_unknown_formats: true,
-            collect_annotations: true,
-            regex_engine: :fancy_regex,
-            resolve_external_refs: false,
-            stop_on_first_error: false
+            regex_engine: :fancy_regex
 
   @doc """
   Convert ExJsonschema.Options to native validation options.
@@ -33,11 +25,7 @@ defmodule ExJsonschema.Native.ValidationOptions do
     %__MODULE__{
       draft: opts.draft,
       validate_formats: opts.validate_formats,
-      ignore_unknown_formats: opts.ignore_unknown_formats,
-      collect_annotations: opts.collect_annotations,
-      regex_engine: opts.regex_engine,
-      resolve_external_refs: opts.resolve_external_refs,
-      stop_on_first_error: opts.stop_on_first_error
+      regex_engine: opts.regex_engine
     }
   end
 end

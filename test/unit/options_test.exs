@@ -10,10 +10,6 @@ defmodule ExJsonschema.OptionsTest do
 
       assert opts.draft == :auto
       assert opts.validate_formats == false
-      assert opts.ignore_unknown_formats == true
-      assert opts.collect_annotations == true
-      assert opts.stop_on_first_error == false
-      assert opts.resolve_external_refs == false
       assert opts.regex_engine == :fancy_regex
       assert opts.output_format == :detailed
     end
@@ -23,20 +19,14 @@ defmodule ExJsonschema.OptionsTest do
         Options.new(
           draft: :draft202012,
           validate_formats: true,
-          ignore_unknown_formats: false,
           regex_engine: :regex,
           output_format: :basic
         )
 
       assert opts.draft == :draft202012
       assert opts.validate_formats == true
-      assert opts.ignore_unknown_formats == false
       assert opts.regex_engine == :regex
       assert opts.output_format == :basic
-
-      # Other fields should remain default
-      assert opts.collect_annotations == true
-      assert opts.stop_on_first_error == false
     end
   end
 
@@ -54,10 +44,8 @@ defmodule ExJsonschema.OptionsTest do
     end
 
     test "draft7/1 creates draft 7 options" do
-      opts = Options.draft7(collect_annotations: false)
-
+      opts = Options.draft7()
       assert opts.draft == :draft7
-      assert opts.collect_annotations == false
     end
 
     test "draft201909/1 creates draft 2019-09 options" do
@@ -80,8 +68,7 @@ defmodule ExJsonschema.OptionsTest do
           draft: :draft202012,
           regex_engine: :fancy_regex,
           output_format: :detailed,
-          validate_formats: true,
-          collect_annotations: false
+          validate_formats: true
         )
 
       assert {:ok, ^opts} = Options.validate(opts)
@@ -112,16 +99,11 @@ defmodule ExJsonschema.OptionsTest do
       opts =
         Options.new(
           validate_formats: true,
-          ignore_unknown_formats: false,
-          resolve_external_refs: true,
-          collect_annotations: true,
           output_format: :detailed
         )
 
       assert {:ok, _} = Options.validate(opts)
       assert opts.validate_formats == true
-      assert opts.ignore_unknown_formats == false
-      assert opts.resolve_external_refs == true
       assert opts.output_format == :detailed
     end
 
@@ -129,28 +111,22 @@ defmodule ExJsonschema.OptionsTest do
       opts =
         Options.new(
           regex_engine: :regex,
-          collect_annotations: false,
-          stop_on_first_error: true,
           output_format: :basic
         )
 
       assert {:ok, _} = Options.validate(opts)
       assert opts.regex_engine == :regex
-      assert opts.collect_annotations == false
-      assert opts.stop_on_first_error == true
       assert opts.output_format == :basic
     end
 
     test "external references profile" do
       opts =
         Options.new(
-          resolve_external_refs: true,
           validate_formats: true,
           output_format: :verbose
         )
 
       assert {:ok, _} = Options.validate(opts)
-      assert opts.resolve_external_refs == true
       assert opts.validate_formats == true
       assert opts.output_format == :verbose
     end
@@ -165,10 +141,6 @@ defmodule ExJsonschema.OptionsTest do
 
       # Boolean fields
       assert is_boolean(opts.validate_formats)
-      assert is_boolean(opts.ignore_unknown_formats)
-      assert is_boolean(opts.collect_annotations)
-      assert is_boolean(opts.stop_on_first_error)
-      assert is_boolean(opts.resolve_external_refs)
 
       # Atom fields
       assert is_atom(opts.regex_engine)
@@ -195,7 +167,6 @@ defmodule ExJsonschema.OptionsTest do
       assert lenient_opts.output_format == :detailed
 
       perf_opts = Options.new(:performance)
-      assert perf_opts.collect_annotations == false
       assert perf_opts.output_format == :basic
     end
 
@@ -206,7 +177,6 @@ defmodule ExJsonschema.OptionsTest do
       assert opts.output_format == :basic
       # Strict character maintained
       assert opts.validate_formats == true
-      assert opts.ignore_unknown_formats == false
     end
 
     test "profile/2 creates profile options with overrides" do
@@ -215,8 +185,7 @@ defmodule ExJsonschema.OptionsTest do
       # Override applied
       assert opts.validate_formats == true
       # Performance character maintained
-      assert opts.collect_annotations == false
-      assert opts.stop_on_first_error == true
+      assert opts.output_format == :basic
     end
 
     test "profile/1 creates profile options without overrides" do

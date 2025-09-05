@@ -17,11 +17,7 @@ defmodule ExJsonschema.Native do
   @type compilation_options :: %{
           draft: draft(),
           validate_formats: boolean(),
-          ignore_unknown_formats: boolean(),
-          collect_annotations: boolean(),
-          regex_engine: regex_engine(),
-          resolve_external_refs: boolean(),
-          stop_on_first_error: boolean()
+          regex_engine: regex_engine()
         }
 
   @type compilation_result :: {:ok, compiled_schema()} | {:error, map()}

@@ -81,8 +81,6 @@ defmodule ExJsonschema.Options do
 
     # External references  
     resolve_external_refs: false,
-    retriever: nil,
-    reference_cache: nil,
 
     # Performance settings
     regex_engine: :fancy_regex,
@@ -105,8 +103,6 @@ defmodule ExJsonschema.Options do
           collect_annotations: boolean(),
           stop_on_first_error: boolean(),
           resolve_external_refs: boolean(),
-          retriever: module() | nil,
-          reference_cache: module() | nil,
           regex_engine: regex_engine(),
           output_format: output_format(),
           include_schema_path: boolean(),
@@ -127,8 +123,6 @@ defmodule ExJsonschema.Options do
     * `:collect_annotations` - Collect annotations during validation (default: `true`) 
     * `:stop_on_first_error` - Stop validation on first error (default: `false`)
     * `:resolve_external_refs` - Resolve external references (default: `false`)
-    * `:retriever` - Custom retriever module for external references (default: `nil`)
-    * `:reference_cache` - Custom cache module for references (default: `nil`)
     * `:regex_engine` - Regex engine to use (default: `:fancy_regex`)
     * `:output_format` - Error output format (default: `:basic`)
     * `:include_schema_path` - Include schema path in errors (default: `true`)

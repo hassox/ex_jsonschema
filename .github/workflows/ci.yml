@@ -126,8 +126,6 @@ jobs:
           # Verify behavior modules are properly loaded
           mix run -e "
             {:module, ExJsonschema.Cache} = Code.ensure_loaded(ExJsonschema.Cache)
-            {:module, ExJsonschema.Retriever} = Code.ensure_loaded(ExJsonschema.Retriever) 
-            {:module, ExJsonschema.ReferenceCache} = Code.ensure_loaded(ExJsonschema.ReferenceCache)
             IO.puts(~c\"✓ All behavior modules loaded successfully\")
           "
 
@@ -137,8 +135,6 @@ jobs:
           echo "Individual module coverage targets:"
           echo "- ExJsonschema.DraftDetector: >90%"
           echo "- ExJsonschema.Cache: 100%"  
-          echo "- ExJsonschema.Retriever: 100%"
-          echo "- ExJsonschema.ReferenceCache: 100%"
 
   lint:
     name: Lint
@@ -186,14 +182,4 @@ jobs:
             echo "✓ Cache behavior documented"
           else
             echo "✗ Cache behavior missing from docs" && exit 1
-          fi
-          if grep -r "ExJsonschema.Retriever" doc/; then
-            echo "✓ Retriever behavior documented"  
-          else
-            echo "✗ Retriever behavior missing from docs" && exit 1
-          fi
-          if grep -r "ExJsonschema.ReferenceCache" doc/; then
-            echo "✓ ReferenceCache behavior documented"
-          else
-            echo "✗ ReferenceCache behavior missing from docs" && exit 1
           fi

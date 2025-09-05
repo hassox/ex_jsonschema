@@ -100,7 +100,7 @@ defmodule ExJsonschema.MixProject do
         Core: [ExJsonschema],
         Configuration: [ExJsonschema.Options, ExJsonschema.Profile],
         Errors: [ExJsonschema.ValidationError, ExJsonschema.CompilationError],
-        Behaviors: [ExJsonschema.Cache, ExJsonschema.Retriever, ExJsonschema.ReferenceCache],
+        Behaviors: [ExJsonschema.Cache],
         Internal: [ExJsonschema.Native, ExJsonschema.DraftDetector]
       ]
     ]

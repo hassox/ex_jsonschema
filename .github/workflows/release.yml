@@ -69,11 +69,14 @@ jobs:
           else
             SOURCE_EXT=".so"
           fi
-          # Copy and rename to ex_jsonschema.so for RustlerPrecompiled
-          cp target/${{ matrix.job.target }}/release/libex_jsonschema${SOURCE_EXT} temp/ex_jsonschema.so
-          tar -czf libex_jsonschema-v${VER}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz -C temp ex_jsonschema.so
-          echo "FILE_NAME=libex_jsonschema-v${VER}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
-          echo "FILE_PATH=$(pwd)/libex_jsonschema-v${VER}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
+          # Name the inner file exactly as rustler_precompiled will try to dlopen
+          FINAL_NAME="libex_jsonschema-v${VER}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so"
+
+          cp "target/${{ matrix.job.target }}/release/libex_jsonschema${SOURCE_EXT}" "temp/${FINAL_NAME}"
+          tar -czf "${FINAL_NAME}.tar.gz" -C temp "${FINAL_NAME}"
+
+          echo "FILE_NAME=${FINAL_NAME}.tar.gz" >> $GITHUB_ENV
+          echo "FILE_PATH=$(pwd)/${FINAL_NAME}.tar.gz" >> $GITHUB_ENV
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

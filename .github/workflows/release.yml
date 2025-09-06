@@ -28,8 +28,6 @@ jobs:
           - { target: x86_64-apple-darwin, os: macos-13 }
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
           - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04 }
-          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04 }   # optional
-          - { target: aarch64-unknown-linux-musl, os: ubuntu-22.04 } 
 
     steps:
       - name: Checkout source code
@@ -45,6 +43,10 @@ jobs:
         with:
           toolchain: stable
           target: ${{ matrix.job.target }}
+
+      - name: Install musl tools (for musl targets)
+        if: startsWith(matrix.job.os, 'ubuntu') && contains(matrix.job.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Build the NIF manually
         shell: bash

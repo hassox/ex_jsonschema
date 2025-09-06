@@ -14,6 +14,8 @@ on:
 permissions:
   contents: write
   actions: read
+  id-token: write
+  attestations: write
 
 jobs:
   build_release:
@@ -22,12 +24,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        nif: ["2.16", "2.15"]
+        nif: ["2.16"]
         job:
           - { target: aarch64-apple-darwin   , os: macos-13       }
           - { target: x86_64-apple-darwin    , os: macos-13       }
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
-          - { target: x86_64-pc-windows-msvc, os: windows-2019   }
 
     steps:
       - name: Checkout source code
@@ -44,6 +45,18 @@ jobs:
           toolchain: stable
           target: ${{ matrix.job.target }}
 
+      - name: Add target
+        shell: bash
+        run: |
+          rustup target add ${{ matrix.job.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v0-precomp
+          shared-key: ${{ matrix.job.target }}-${{ matrix.nif }}
+          workspaces: |
+            native/ex_jsonschema
+
       - name: Build the project
         id: build-crate
         uses: philss/rustler-precompiled-action@v1.1.4
@@ -52,8 +65,7 @@ jobs:
           project-version: ${{ env.PROJECT_VERSION }}
           target: ${{ matrix.job.target }}
           nif-version: ${{ matrix.nif }}
-          use-cross: ${{ matrix.job.use-cross || false }}
-          cross-version: ${{ matrix.job.cross-version || 'from-source' }}
+          use-cross: false
           project-dir: "native/ex_jsonschema"
 
       - name: Upload artifacts

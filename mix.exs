@@ -22,11 +22,6 @@ defmodule ExJsonschema.MixProject do
       name: "ExJsonschema",
       source_url: @source_url,
       homepage_url: @source_url,
-      config: [
-        rustler_precompiled: [
-          nif_versions: ["2.15", "2.16"]
-        ]
-      ],
 
       # Test coverage configuration
       test_coverage: [

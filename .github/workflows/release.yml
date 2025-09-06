@@ -27,6 +27,9 @@ jobs:
           - { target: aarch64-apple-darwin, os: macos-14 }
           - { target: x86_64-apple-darwin, os: macos-13 }
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04 }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04 }   # optional
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-22.04 } 
 
     steps:
       - name: Checkout source code
@@ -35,7 +38,7 @@ jobs:
       - name: Extract project version
         shell: bash
         run: |
-          echo "PROJECT_VERSION=$(sed -n 's/^  @version \"\(.*\)\"/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
+          echo "PROJECT_VERSION=$(sed -n 's/.*@version *"\(.*\)".*/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -47,7 +50,10 @@ jobs:
         shell: bash
         run: |
           cd native/ex_jsonschema
-          cargo build --release --target ${{ matrix.job.target }} --features nif_version_${{ matrix.nif }}
+          NIF_FEATURE="nif_version_${{ matrix.nif }}"
+          NIF_FEATURE="${NIF_FEATURE//./_}"   # replace '.' with '_'
+          cargo build --release --target ${{ matrix.job.target }} --features "$NIF_FEATURE"
+
           mkdir temp
           # Select source extension based on platform
           if [[ "${{ matrix.job.os }}" =~ ^macos ]]; then

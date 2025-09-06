@@ -31,6 +31,13 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
+      - name: Install GNU tar on macOS
+        if: startsWith(matrix.job.os, 'macos')
+        run: |
+          brew install gnu-tar
+          echo "PATH=/opt/homebrew/bin:$PATH" >> $GITHUB_ENV
+        continue-on-error: true # In case brew fails, proceed since cross isn't used
+
       - name: Extract project version
         shell: bash
         run: |
@@ -62,8 +69,7 @@ jobs:
       - name: Publish archives and packages
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            ${{ steps.build-crate.outputs.file-path }}
+          files: ${{ steps.build-crate.outputs.file-path }}
         if: startsWith(github.ref, 'refs/tags/')
 
   publish_hex:
@@ -78,8 +84,8 @@ jobs:
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: '1.18'
-          otp-version: '25' # Matches NIF 2.16
+          elixir-version: "1.18"
+          otp-version: "25"
 
       - name: Install dependencies
         run: mix deps.get

@@ -48,8 +48,14 @@ jobs:
           cd native/ex_jsonschema
           cargo build --release --target ${{ matrix.job.target }} --features nif_version_2_16
           mkdir temp
-          # Use .so extension for all platforms, as expected by RustlerPrecompiled
-          cp target/${{ matrix.job.target }}/release/libex_jsonschema${{ matrix.job.os == 'macos-14' || matrix.job.os == 'macos-13' && '.dylib' || '.so' }} temp/ex_jsonschema.so
+          # Select source extension based on platform
+          if [[ "${{ matrix.job.os }}" =~ ^macos ]]; then
+            SOURCE_EXT=".dylib"
+          else
+            SOURCE_EXT=".so"
+          fi
+          # Copy and rename to ex_jsonschema.so for RustlerPrecompiled
+          cp target/${{ matrix.job.target }}/release/libex_jsonschema${SOURCE_EXT} temp/ex_jsonschema.so
           tar -czf ex_jsonschema-nif-2.16-${{ matrix.job.target }}.tar.gz -C temp ex_jsonschema.so
           echo "FILE_NAME=ex_jsonschema-nif-2.16-${{ matrix.job.target }}.tar.gz" >> $GITHUB_ENV
           echo "FILE_PATH=$(pwd)/ex_jsonschema-nif-2.16-${{ matrix.job.target }}.tar.gz" >> $GITHUB_ENV

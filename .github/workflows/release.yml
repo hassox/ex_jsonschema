@@ -112,13 +112,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: precompiled
+          merge-multiple: true
 
       # ⬅️ 2) Stage them where the Mix task will find them (repo root is simplest)
       - name: Stage precompiled archives at project root
         shell: bash
         run: |
           shopt -s globstar
-          mv precompiled/**/*.tar.gz . || true
+          mv precompiled/*.tar.gz . || true
           echo "Tarballs staged:"
           ls -1 *.tar.gz || true
 

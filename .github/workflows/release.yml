@@ -103,15 +103,15 @@ jobs:
           shopt -s globstar
           mv precompiled/**/*.tar.gz . || true
 
-      # ⬅️ 3) Generate the checksum file from local tarballs
-      - name: Generate rustler_precompiled checksum file
-        run: MIX_ENV=prod mix rustler_precompiled.download ExJsonschema.Native --only-local
-
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
           elixir-version: '1.18'
           otp-version: '26'
+
+      # ⬅️ 3) Generate the checksum file from local tarballs
+      - name: Generate rustler_precompiled checksum file
+        run: MIX_ENV=prod mix rustler_precompiled.download ExJsonschema.Native --only-local
 
       - name: Install dependencies
         run: mix deps.get

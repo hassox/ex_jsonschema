@@ -17,11 +17,12 @@ permissions:
 
 jobs:
   build_release:
-    name: NIF 2.16 - ${{ matrix.job.target }} (${{ matrix.job.os }})
+    name: NIF ${{ matrix.nif }} - ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
+        nif: ["2.15", "2.16"]
         job:
           - { target: aarch64-apple-darwin, os: macos-14 }
           - { target: x86_64-apple-darwin, os: macos-13 }
@@ -46,7 +47,7 @@ jobs:
         shell: bash
         run: |
           cd native/ex_jsonschema
-          cargo build --release --target ${{ matrix.job.target }} --features nif_version_2_16
+          cargo build --release --target ${{ matrix.job.target }} --features nif_version_${{ matrix.nif }}
           mkdir temp
           # Select source extension based on platform
           if [[ "${{ matrix.job.os }}" =~ ^macos ]]; then
@@ -56,10 +57,9 @@ jobs:
           fi
           # Copy and rename to ex_jsonschema.so for RustlerPrecompiled
           cp target/${{ matrix.job.target }}/release/libex_jsonschema${SOURCE_EXT} temp/ex_jsonschema.so
-          # Use expected filename format: libex_jsonschema-v<version>-nif-2.16-<target>.so.tar.gz
-          tar -czf libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-2.16-${{ matrix.job.target }}.so.tar.gz -C temp ex_jsonschema.so
-          echo "FILE_NAME=libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-2.16-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
-          echo "FILE_PATH=$(pwd)/libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-2.16-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
+          tar -czf libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz -C temp ex_jsonschema.so
+          echo "FILE_NAME=libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
+          echo "FILE_PATH=$(pwd)/libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -86,7 +86,7 @@ jobs:
         uses: erlef/setup-beam@v1
         with:
           elixir-version: '1.18'
-          otp-version: '25'
+          otp-version: '26'
 
       - name: Install dependencies
         run: mix deps.get

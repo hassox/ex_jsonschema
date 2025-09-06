@@ -122,7 +122,8 @@ defmodule ExJsonschema.MixProject do
     [
       ex_jsonschema: [
         path: "native/ex_jsonschema",
-        mode: rustler_mode()
+        mode: rustler_mode(),
+        default_features: true
       ]
     ]
   end

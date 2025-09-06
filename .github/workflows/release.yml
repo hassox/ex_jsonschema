@@ -89,6 +89,15 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.18'
+          otp-version: '26'
+
+      - name: Install dependencies
+        run: mix deps.get
       
       # ⬅️ 1) Pull all tarballs produced by the build job(s)
       - name: Download build artifacts
@@ -103,21 +112,17 @@ jobs:
           shopt -s globstar
           mv precompiled/**/*.tar.gz . || true
 
-      - name: Set up Elixir
-        uses: erlef/setup-beam@v1
-        with:
-          elixir-version: '1.18'
-          otp-version: '26'
 
       # ⬅️ 3) Generate the checksum file from local tarballs
       - name: Generate rustler_precompiled checksum file
-        run: MIX_ENV=prod mix rustler_precompiled.download ExJsonschema.Native --only-local
+        env:
+          EX_JSONSCHEMA_BUILD: "1"
 
-      - name: Install dependencies
-        run: mix deps.get
+        run: MIX_ENV=prod mix rustler_precompiled.download ExJsonschema.Native --only-local
 
       - name: Publish to Hex
         env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+          EX_JSONSCHEMA_BUILD: "1"
         run: |
           mix hex.publish --yes

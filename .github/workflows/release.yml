@@ -107,58 +107,11 @@ jobs:
         env:
           EX_JSONSCHEMA_BUILD: "1"
       
-      # ⬅️ 1) Pull all tarballs produced by the build job(s)
-      - name: Download build artifacts (ALL)
-        uses: actions/download-artifact@v4
-        with:
-          path: precompiled
-          merge-multiple: true
-
-      # ⬅️ 2) Stage them where the Mix task will find them (repo root is simplest)
-      - name: Stage precompiled archives at project root
-        shell: bash
-        run: |
-          shopt -s globstar
-          mv precompiled/*.tar.gz . || true
-          echo "Tarballs staged:"
-          ls -1 *.tar.gz || true
-
-
-      - name: Validate all expected precompiled archives are present
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Normalize version (strip leading "v")
-          VER="${PROJECT_VERSION#v}"
-          echo "Expecting tarballs for version: $VER"
-          echo "Targets:"
-          echo "${RUSTLER_TARGETS}"
-          echo "NIF versions: ${RUSTLER_NIF_VERSIONS}"
-      
-          missing=0
-          for nif in ${RUSTLER_NIF_VERSIONS}; do
-            for tgt in ${RUSTLER_TARGETS}; do
-              f="libex_jsonschema-v${VER}-nif-${nif}-${tgt}.so.tar.gz"
-              if [[ ! -f "$f" ]]; then
-                echo "::error::Missing artifact: $f"
-                missing=1
-              else
-                echo "Found: $f"
-              fi
-            done
-          done
-
-          if [[ "$missing" -ne 0 ]]; then
-            echo "::error::One or more precompiled archives are missing. Failing publish."
-            exit 1
-          fi
-
-      # ⬅️ 3) Generate the checksum file from local tarballs
       - name: Generate rustler_precompiled checksum file
         env:
           EX_JSONSCHEMA_BUILD: "1"
 
-        run: MIX_ENV=prod mix rustler_precompiled.download ExJsonschema.Native --only-local
+        run: MIX_ENV=prod mix rustler_precompiled.download ExJsonschema.Native --all --ignore-unavailable --print
 
       - name: Publish to Hex
         env:

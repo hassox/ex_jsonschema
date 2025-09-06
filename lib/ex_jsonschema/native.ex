@@ -8,7 +8,14 @@ defmodule ExJsonschema.Native do
     crate: "ex_jsonschema",
     base_url: "https://github.com/hassox/ex_jsonschema/releases/download/v#{version}",
     force_build: System.get_env("EX_JSONSCHEMA_BUILD") in ["1", "true"],
-    version: version
+    version: version,
+    nif_versions: ["2.15", "2.16"],
+    targets: [
+      "aarch64-apple-darwin",
+      "x86_64-apple-darwin",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl"
+    ]
 
   @type compiled_schema :: reference()
   @type draft :: :auto | :draft4 | :draft6 | :draft7 | :draft201909 | :draft202012

@@ -1,7 +1,7 @@
 defmodule ExJsonschema.MixProject do
   use Mix.Project
 
-  @version "0.1.6"
+  @version "0.1.7"
   @source_url "https://github.com/hassox/ex_jsonschema"
   @description "High-performance JSON Schema validation for Elixir using Rust"
 

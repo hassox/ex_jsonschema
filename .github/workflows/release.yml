@@ -22,21 +22,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-<<<<<<< Updated upstream
-        nif: ["2.15", "2.16", "2.17"]
-        job:
-          - { target: aarch64-apple-darwin   , os: macos-14       , use_cross: false }
-          - { target: x86_64-apple-darwin    , os: macos-13       , use_cross: false }
-          - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04   , use_cross: false }
-          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04 , use_cross: true  }
-          - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04 , use_cross: true  }
-          - { target: aarch64-unknown-linux-musl, os: ubuntu-22.04, use_cross: true  }
-=======
         job:
           - { target: aarch64-apple-darwin, os: macos-14 }
           - { target: x86_64-apple-darwin, os: macos-13 }
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
->>>>>>> Stashed changes
 
     steps:
       - name: Checkout source code
@@ -60,13 +49,8 @@ jobs:
           project-name: ex_jsonschema
           project-version: ${{ env.PROJECT_VERSION }}
           target: ${{ matrix.job.target }}
-<<<<<<< Updated upstream
-          nif-version: ${{ matrix.nif }}
-          use-cross: ${{ matrix.job.use_cross }}
-=======
           nif-version: "2.16"
           use-cross: false
->>>>>>> Stashed changes
           project-dir: "native/ex_jsonschema"
 
       - name: Upload artifacts

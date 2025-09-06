@@ -89,6 +89,23 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+      
+      # ⬅️ 1) Pull all tarballs produced by the build job(s)
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: precompiled
+
+      # ⬅️ 2) Stage them where the Mix task will find them (repo root is simplest)
+      - name: Stage precompiled archives at project root
+        shell: bash
+        run: |
+          shopt -s globstar
+          mv precompiled/**/*.tar.gz . || true
+
+      # ⬅️ 3) Generate the checksum file from local tarballs
+      - name: Generate rustler_precompiled checksum file
+        run: MIX_ENV=prod mix rustler_precompiled.download ExJsonschema.Native --only-local
 
       - name: Set up Elixir
         uses: erlef/setup-beam@v1

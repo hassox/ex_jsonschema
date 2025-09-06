@@ -34,7 +34,7 @@ defmodule ExJsonschema.ErrorFormattingIntegrationTest do
         "email": "not-an-email"
       })
 
-      # Validate and get errors  
+      # Validate and get errors
       {:error, errors} = ExJsonschema.validate(validator, invalid_json, output: :verbose)
 
       # Should have multiple errors

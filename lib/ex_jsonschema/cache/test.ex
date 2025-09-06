@@ -5,7 +5,7 @@ defmodule ExJsonschema.Cache.Test do
   This cache is designed for testing and supports both async and non-async tests:
 
   - **Async tests**: Use process-local cache via `set_cache_for_process/1`
-  - **Non-async tests**: Use Application environment via `set_global_cache/1` 
+  - **Non-async tests**: Use Application environment via `set_global_cache/1`
 
   ## Usage
 
@@ -16,17 +16,17 @@ defmodule ExJsonschema.Cache.Test do
         ExJsonschema.Cache.Test.set_cache_for_process(test_cache)
         :ok
       end
-      
+
   ### Non-async Tests (global, works with spawns):
 
       setup do
         test_cache = start_supervised!({Agent, fn -> %{} end})
         ExJsonschema.Cache.Test.set_global_cache(test_cache)
-        
-        on_exit(fn -> 
+
+        on_exit(fn ->
           ExJsonschema.Cache.Test.clear_global_cache()
         end)
-        
+
         :ok
       end
   """
@@ -74,7 +74,7 @@ defmodule ExJsonschema.Cache.Test do
       setup do
         test_cache = start_supervised!({Agent, fn -> %{} end})
         cleanup = ExJsonschema.Cache.Test.setup_global_mode(test_cache)
-        
+
         on_exit(cleanup)
         :ok
       end
@@ -108,7 +108,7 @@ defmodule ExJsonschema.Cache.Test do
       setup do
         test_cache = start_supervised!({Agent, fn -> %{} end})
         cleanup = ExJsonschema.Cache.Test.setup_process_mode(test_cache)
-        
+
         on_exit(cleanup)
         :ok
       end

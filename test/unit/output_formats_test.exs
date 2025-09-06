@@ -88,7 +88,7 @@ defmodule ExJsonschema.OutputFormatsTest do
   describe "output format: verbose (comprehensive error information)" do
     test "includes instance and schema values" do
       schema = ~s({
-        "type": "object", 
+        "type": "object",
         "properties": {
           "age": {"type": "number", "minimum": 18, "maximum": 120}
         }
@@ -157,7 +157,7 @@ defmodule ExJsonschema.OutputFormatsTest do
         "type": "object",
         "properties": {
           "username": {
-            "title": "Username", 
+            "title": "Username",
             "type": "string",
             "pattern": "^[a-zA-Z0-9_]{3,20}$"
           }

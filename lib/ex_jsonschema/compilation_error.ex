@@ -2,7 +2,7 @@ defmodule ExJsonschema.CompilationError do
   @moduledoc """
   Represents an error that occurred during JSON Schema compilation.
 
-  This struct provides detailed information about what went wrong during 
+  This struct provides detailed information about what went wrong during
   schema compilation, including the error type, message, and any additional context.
   """
 

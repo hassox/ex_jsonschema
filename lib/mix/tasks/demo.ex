@@ -8,11 +8,11 @@ defmodule Mix.Tasks.Demo do
   ## Usage
 
       mix demo
-      
+
   ## Generated Files
 
   The task will create a demo/ directory with examples of:
-  - Human formats (with and without colors)  
+  - Human formats (with and without colors)
   - JSON formats (compact and pretty)
   - Table formats (standard and compact)
   - Markdown formats (basic, with TOC, custom heading levels)
@@ -76,7 +76,7 @@ defmodule Mix.Tasks.Demo do
               "maxLength": 50
             },
             "age": {
-              "type": "number", 
+              "type": "number",
               "minimum": 18,
               "maximum": 99
             },
@@ -239,7 +239,7 @@ defmodule Mix.Tasks.Demo do
     The demo uses a complex user profile schema with nested objects, arrays, enums, and various validation rules including:
 
     - String length constraints
-    - Numeric ranges  
+    - Numeric ranges
     - Email format validation
     - Array uniqueness and enum constraints
     - Object property requirements
@@ -250,7 +250,7 @@ defmodule Mix.Tasks.Demo do
     The test data intentionally violates multiple validation rules to demonstrate different error types:
 
     - Too short string (name: "X")
-    - Value below minimum (age: 15) 
+    - Value below minimum (age: 15)
     - Invalid email format (email: "not-an-email")
     - Invalid enum values and duplicates in array
     - Additional properties not allowed
@@ -262,7 +262,7 @@ defmodule Mix.Tasks.Demo do
     - human_with_colors.txt - ANSI colored output for terminals
     - human_no_colors.txt - Plain text for logs and non-terminal output
 
-    ### JSON Formats  
+    ### JSON Formats
     - errors_compact.json - Minified JSON for APIs
     - errors_pretty.json - Pretty-printed JSON for debugging
 

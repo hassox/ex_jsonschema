@@ -11,13 +11,13 @@ defmodule ExJsonschema.Options do
 
       # Default options with automatic draft detection
       opts = ExJsonschema.Options.new()
-      
+
       # Strict validation with format checking
       opts = ExJsonschema.Options.new(
         draft: :draft202012,
         validate_formats: true
       )
-      
+
       # Performance-optimized options
       opts = ExJsonschema.Options.new(
         regex_engine: :regex
@@ -29,7 +29,7 @@ defmodule ExJsonschema.Options do
 
   - `:auto` - Automatically detect draft from schema's `$schema` property
   - `:draft4` - JSON Schema Draft 4 (2013)
-  - `:draft6` - JSON Schema Draft 6 (2017) 
+  - `:draft6` - JSON Schema Draft 6 (2017)
   - `:draft7` - JSON Schema Draft 7 (2019)
   - `:draft201909` - JSON Schema 2019-09
   - `:draft202012` - JSON Schema 2020-12 (latest)
@@ -54,7 +54,7 @@ defmodule ExJsonschema.Options do
   @typedoc """
   Output format for validation results.
 
-  - `:basic` - `:ok` or `{:error, :validation_failed}` 
+  - `:basic` - `:ok` or `{:error, :validation_failed}`
   - `:detailed` - Structured error information with paths and messages (default)
   - `:verbose` - Comprehensive error details with context, values, and suggestions
 
@@ -100,11 +100,11 @@ defmodule ExJsonschema.Options do
       iex> opts = ExJsonschema.Options.new()
       iex> opts.draft
       :auto
-      
+
       iex> opts = ExJsonschema.Options.new(draft: :draft202012, validate_formats: true)
       iex> {opts.draft, opts.validate_formats}
       {:draft202012, true}
-      
+
   ## Profile Integration
 
   You can also create Options from predefined profiles:
@@ -112,7 +112,7 @@ defmodule ExJsonschema.Options do
       iex> opts = ExJsonschema.Options.new(:strict)
       iex> opts.validate_formats
       true
-      
+
       iex> opts = ExJsonschema.Options.new({:performance, [output_format: :basic]})
       iex> opts.output_format
       :basic
@@ -143,7 +143,7 @@ defmodule ExJsonschema.Options do
       iex> opts = ExJsonschema.Options.profile(:strict)
       iex> opts.validate_formats
       true
-      
+
       iex> opts = ExJsonschema.Options.profile(:performance, output_format: :basic)
       iex> opts.output_format
       :basic
@@ -205,7 +205,7 @@ defmodule ExJsonschema.Options do
       iex> opts = ExJsonschema.Options.new(draft: :draft202012)
       iex> ExJsonschema.Options.validate(opts)
       {:ok, opts}
-      
+
       iex> opts = %ExJsonschema.Options{draft: :invalid}
       iex> ExJsonschema.Options.validate(opts)
       {:error, "Invalid draft version: :invalid"}

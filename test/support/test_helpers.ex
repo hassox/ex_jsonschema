@@ -4,7 +4,7 @@ defmodule ExJsonschema.TestHelpers do
 
   Provides utilities for:
   - Asserting validation outcomes
-  - Performance benchmarking  
+  - Performance benchmarking
   - Error analysis
   - Test data generation
   """

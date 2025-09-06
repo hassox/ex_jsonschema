@@ -44,7 +44,7 @@ defmodule ExJsonschema.ErrorHandlingExamplesTest do
         "type": "object",
         "properties": {
           "user": {
-            "type": "object", 
+            "type": "object",
             "properties": {
               "name": {"type": "string", "minLength": 2},
               "age": {"type": "number", "minimum": 18}
@@ -538,7 +538,7 @@ defmodule ExJsonschema.ErrorHandlingExamplesTest do
             "required": ["host", "port"]
           },
           "cache": {
-            "type": "object", 
+            "type": "object",
             "properties": {
               "ttl": {"type": "integer", "minimum": 0},
               "size": {"type": "string", "pattern": "^[0-9]+[MGK]B$"}
@@ -700,7 +700,7 @@ defmodule ExJsonschema.ErrorHandlingExamplesTest do
 
       # Step 3: Metadata validation
       metadata_schema = ~s({
-        "type": "object", 
+        "type": "object",
         "properties": {
           "metadata": {
             "type": "object",

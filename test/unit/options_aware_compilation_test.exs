@@ -46,7 +46,7 @@ defmodule ExJsonschema.OptionsAwareCompilationTest do
 
     test "auto-detection works in compile/2 with Options struct" do
       schema_with_draft = ~s({
-        "$schema": "https://json-schema.org/draft/2019-09/schema", 
+        "$schema": "https://json-schema.org/draft/2019-09/schema",
         "type": "string"
       })
       options = Options.new(draft: :auto)

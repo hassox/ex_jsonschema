@@ -139,7 +139,7 @@ defmodule ExJsonschema.ProtocolImplementationsTest do
 
       assert is_binary(message)
       assert String.contains?(message, "JSON Schema validation failed")
-      # Should contain information about the number of errors  
+      # Should contain information about the number of errors
       assert String.contains?(message, "2")
     end
   end

@@ -37,7 +37,7 @@ defmodule Mix.Tasks.Benchmark do
       --format FORMAT     Run benchmarks for specific format (basic, detailed, verbose, all)
       --iterations NUM    Number of iterations to run (default: 1000)
       --help, -h         Show this help
-      
+
     Examples:
       mix benchmark
       mix benchmark --format verbose --iterations 500
@@ -104,7 +104,7 @@ defmodule Mix.Tasks.Benchmark do
 
     valid_throughput = 1_000_000 * length(valid_instances) / time_valid
 
-    # Invalid instances benchmark  
+    # Invalid instances benchmark
     {time_invalid, _results} =
       :timer.tc(fn ->
         Enum.map(invalid_instances, &ExJsonschema.validate(validator, &1, output: format))

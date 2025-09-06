@@ -6,7 +6,7 @@ defmodule ExJsonschema.Profile do
   ExJsonschema for different use cases:
 
   - **:strict** - Maximum validation rigor with security-focused settings
-  - **:lenient** - Flexible validation that's forgiving for common user errors  
+  - **:lenient** - Flexible validation that's forgiving for common user errors
   - **:performance** - Speed-optimized configuration for high-throughput scenarios
 
   Profiles provide sensible defaults while remaining fully customizable through
@@ -18,21 +18,21 @@ defmodule ExJsonschema.Profile do
       # Use strict profile for API validation
       strict_opts = ExJsonschema.Profile.strict()
       {:ok, validator} = ExJsonschema.compile(schema, strict_opts)
-      
+
       # Use lenient profile for user input forms
       lenient_opts = ExJsonschema.Profile.lenient()
       result = ExJsonschema.validate(validator, user_data, lenient_opts)
-      
-      # Use performance profile for high-volume batch processing  
+
+      # Use performance profile for high-volume batch processing
       perf_opts = ExJsonschema.Profile.performance()
       results = Enum.map(large_dataset, &ExJsonschema.valid?(validator, &1, perf_opts))
-      
+
       # Customize any profile with overrides
       custom_strict = ExJsonschema.Profile.strict(output_format: :verbose)
-      
+
   ## Creating Custom Profiles
 
-  While the built-in profiles cover most use cases, you can easily create your own 
+  While the built-in profiles cover most use cases, you can easily create your own
   custom profiles using `ExJsonschema.Options.new/1`:
 
       # API validation profile
@@ -41,18 +41,18 @@ defmodule ExJsonschema.Profile do
         output_format: :detailed,
         draft: :draft7
       )
-      
-      # Development/debugging profile  
+
+      # Development/debugging profile
       debug_profile = ExJsonschema.Options.new(
         output_format: :verbose
       )
-      
+
       # Production microservice profile
       micro_profile = ExJsonschema.Options.new(
         output_format: :basic,
         regex_engine: :regex
       )
-      
+
   You can then use custom profiles anywhere Options are accepted:
 
       {:ok, validator} = ExJsonschema.compile(schema, api_profile)
@@ -82,7 +82,7 @@ defmodule ExJsonschema.Profile do
   ## Use Cases
 
   - REST API request/response validation
-  - Configuration file validation  
+  - Configuration file validation
   - Data import/export validation
   - Compliance and audit scenarios
   - Development and testing environments
@@ -93,7 +93,7 @@ defmodule ExJsonschema.Profile do
 
       # Strict but with basic error format for performance
       ExJsonschema.Profile.strict(output_format: :basic)
-      
+
       # Strict but with different regex engine
       ExJsonschema.Profile.strict(regex_engine: :regex)
 
@@ -101,7 +101,7 @@ defmodule ExJsonschema.Profile do
 
       schema = ~s({"type": "object", "properties": {"email": {"type": "string", "format": "email"}}})
       {:ok, validator} = ExJsonschema.compile(schema, ExJsonschema.Profile.strict())
-      
+
       # Will catch format violations
       ExJsonschema.validate(validator, ~s({"email": "invalid-email"}))
       #=> {:error, [%ValidationError{message: "invalid-email is not a valid email format", ...}]}
@@ -129,7 +129,7 @@ defmodule ExJsonschema.Profile do
   @doc """
   Returns the lenient validation profile.
 
-  The lenient profile balances validation quality with user-friendliness, making 
+  The lenient profile balances validation quality with user-friendliness, making
   it ideal for user-facing forms, content management, and scenarios where some
   flexibility improves user experience.
 
@@ -153,7 +153,7 @@ defmodule ExJsonschema.Profile do
 
       # Lenient but with format validation for critical fields
       ExJsonschema.Profile.lenient(validate_formats: true)
-      
+
       # Lenient but with different output format
       ExJsonschema.Profile.lenient(output_format: :verbose)
 
@@ -161,7 +161,7 @@ defmodule ExJsonschema.Profile do
 
       schema = ~s({"type": "object", "properties": {"age": {"type": "number", "custom-format": "range"}}})
       {:ok, validator} = ExJsonschema.compile(schema, ExJsonschema.Profile.lenient())
-      
+
       # Will ignore unknown custom format
       ExJsonschema.validate(validator, ~s({"age": 25}))
       #=> :ok
@@ -214,7 +214,7 @@ defmodule ExJsonschema.Profile do
 
       # Performance profile but collect errors for debugging
       ExJsonschema.Profile.performance(output_format: :detailed)
-      
+
       # Performance profile but validate critical formats
       ExJsonschema.Profile.performance(validate_formats: true)
 
@@ -222,11 +222,11 @@ defmodule ExJsonschema.Profile do
 
       schema = ~s({"type": "object", "required": ["id"]})
       {:ok, validator} = ExJsonschema.compile(schema, ExJsonschema.Profile.performance())
-      
+
       # Fast validation with minimal error details
       ExJsonschema.valid?(validator, ~s({"id": "123"}))
       #=> true
-      
+
       ExJsonschema.validate(validator, ~s({}))
       #=> {:error, :validation_failed}  # Basic error format
   """
@@ -260,7 +260,7 @@ defmodule ExJsonschema.Profile do
 
       opts = ExJsonschema.Profile.get(:strict)
       # Same as: ExJsonschema.Profile.strict()
-      
+
       opts = ExJsonschema.Profile.get(:performance, output_format: :detailed)
       # Same as: ExJsonschema.Profile.performance(output_format: :detailed)
   """

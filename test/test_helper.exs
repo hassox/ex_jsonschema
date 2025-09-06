@@ -4,7 +4,7 @@ ExUnit.start()
 Code.require_file("support/test_helpers.ex", __DIR__)
 Code.require_file("support/fixtures.ex", __DIR__)
 
-# Configure test environment  
+# Configure test environment
 Application.put_env(:ex_jsonschema, :test_mode, true)
 
 # Import test helpers globally for convenience

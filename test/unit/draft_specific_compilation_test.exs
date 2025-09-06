@@ -95,7 +95,7 @@ defmodule ExJsonschema.DraftSpecificCompilationTest do
 
     test "handles readOnly and writeOnly keywords" do
       schema = ~s({
-        "type": "object", 
+        "type": "object",
         "properties": {
           "id": {"type": "integer", "readOnly": true},
           "secret": {"type": "string", "writeOnly": true}
@@ -303,7 +303,7 @@ defmodule ExJsonschema.DraftSpecificCompilationTest do
       {:ok, generic} = ExJsonschema.compile(schema)
       generic_compile_time = System.monotonic_time(:microsecond) - start_time
 
-      # Draft-specific compilation  
+      # Draft-specific compilation
       start_time = System.monotonic_time(:microsecond)
       {:ok, draft7} = ExJsonschema.compile_draft7(schema)
       draft7_compile_time = System.monotonic_time(:microsecond) - start_time
@@ -336,7 +336,7 @@ defmodule ExJsonschema.DraftSpecificCompilationTest do
             "type": "object",
             "properties": {
               "profile": {
-                "type": "object", 
+                "type": "object",
                 "properties": {
                   "preferences": {
                     "type": "array",

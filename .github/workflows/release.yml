@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        nif: ["2.15", "2.17"]
+        nif: ["2.17"]
         job:
           - { target: aarch64-apple-darwin   , os: macos-14       }
           - { target: x86_64-apple-darwin    , os: macos-13       }
@@ -54,7 +54,6 @@ jobs:
           nif-version: ${{ matrix.nif }}
           use-cross: false
           project-dir: "native/ex_jsonschema"
-          features: "nif_version_${{ matrix.nif }}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

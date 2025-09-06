@@ -24,12 +24,12 @@ defmodule ExJsonschema.Native do
   @type validation_result :: :ok | :error | {:error, [map()]}
   @type detection_result :: {:ok, draft()} | {:error, map()}
 
-  # Schema compilation  
+  # Schema compilation
   def compile_schema(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
   def compile_schema_with_draft(_schema_json, _draft), do: :erlang.nif_error(:nif_not_loaded)
   def compile_schema_with_options(_schema_json, _options), do: :erlang.nif_error(:nif_not_loaded)
 
-  # Validation  
+  # Validation
   def validate(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)
   def validate_detailed(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)
   def validate_verbose(_compiled_schema, _instance_json), do: :erlang.nif_error(:nif_not_loaded)

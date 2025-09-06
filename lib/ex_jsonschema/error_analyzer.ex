@@ -12,16 +12,16 @@ defmodule ExJsonschema.ErrorAnalyzer do
   ## Usage
 
       errors = [%ValidationError{...}, ...]
-      
+
       # Get error summary
       summary = ExJsonschema.ErrorAnalyzer.analyze(errors)
-      
+
       # Group errors by type
       grouped = ExJsonschema.ErrorAnalyzer.group_by_type(errors)
-      
+
       # Get fix recommendations
       fixes = ExJsonschema.ErrorAnalyzer.suggest_fixes(errors)
-      
+
   """
 
   require Logger
@@ -50,10 +50,10 @@ defmodule ExJsonschema.ErrorAnalyzer do
 
       errors = [error1, error2, ...]
       analysis = ExJsonschema.ErrorAnalyzer.analyze(errors)
-      
+
       analysis.total_errors
       #=> 2
-      analysis.categories[:type_mismatch] 
+      analysis.categories[:type_mismatch]
       #=> 1
   """
   @spec analyze([ValidationError.t()]) :: error_analysis()
@@ -88,7 +88,7 @@ defmodule ExJsonschema.ErrorAnalyzer do
 
   ## Examples
 
-      errors = [error1, error2, ...]  
+      errors = [error1, error2, ...]
       grouped = ExJsonschema.ErrorAnalyzer.group_by_type(errors)
       Map.has_key?(grouped, :type_mismatch)
       #=> true
@@ -255,7 +255,7 @@ defmodule ExJsonschema.ErrorAnalyzer do
     patterns =
       if has_missing_properties?(errors), do: [:missing_properties | patterns], else: patterns
 
-    # Check for type conflict patterns  
+    # Check for type conflict patterns
     patterns = if has_type_conflicts?(errors), do: [:type_conflicts | patterns], else: patterns
 
     # Check for range/constraint violation patterns

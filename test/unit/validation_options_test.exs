@@ -22,7 +22,7 @@ defmodule ExJsonschema.ValidationOptionsTest do
     test "validate_formats: true enables format validation", %{validator: validator} do
       invalid_email = ~s({"email": "not-an-email"})
 
-      # NOTE: For M2.4, format validation is accepted as an option but not yet 
+      # NOTE: For M2.4, format validation is accepted as an option but not yet
       # implemented in the Rust NIF. This test verifies the option is accepted.
       result =
         ExJsonschema.validate(validator, invalid_email, output: :detailed, validate_formats: true)
@@ -49,7 +49,7 @@ defmodule ExJsonschema.ValidationOptionsTest do
       # Instance with multiple errors: missing required field + type mismatch
       invalid_data = ~s({"age": "not-a-number"})
 
-      # NOTE: For M2.4, stop_on_first_error is accepted as an option but not yet 
+      # NOTE: For M2.4, stop_on_first_error is accepted as an option but not yet
       # implemented in the Rust NIF. This test verifies the option is accepted.
       result =
         ExJsonschema.validate(validator, invalid_data,
@@ -66,7 +66,7 @@ defmodule ExJsonschema.ValidationOptionsTest do
     test "stop_on_first_error: false (default) returns all validation errors", %{
       validator: validator
     } do
-      # Instance with multiple errors: missing required field + type mismatch  
+      # Instance with multiple errors: missing required field + type mismatch
       invalid_data = ~s({"age": "not-a-number"})
 
       # With stop_on_first_error disabled (default), should return all errors
@@ -90,7 +90,7 @@ defmodule ExJsonschema.ValidationOptionsTest do
 
       assert :ok = result_with_annotations
 
-      # Test with collect_annotations: false  
+      # Test with collect_annotations: false
       result_without_annotations =
         ExJsonschema.validate(validator, valid_data, output: :verbose, collect_annotations: false)
 
@@ -175,7 +175,7 @@ defmodule ExJsonschema.ValidationOptionsTest do
       opts_true = Options.new(validate_formats: true, output_format: :detailed)
       result_true = ExJsonschema.validate(validator, invalid_email, opts_true)
 
-      # Test Options struct with validate_formats: false  
+      # Test Options struct with validate_formats: false
       opts_false = Options.new(validate_formats: false, output_format: :detailed)
       result_false = ExJsonschema.validate(validator, invalid_email, opts_false)
 

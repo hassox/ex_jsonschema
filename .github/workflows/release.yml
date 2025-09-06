@@ -56,9 +56,10 @@ jobs:
           fi
           # Copy and rename to ex_jsonschema.so for RustlerPrecompiled
           cp target/${{ matrix.job.target }}/release/libex_jsonschema${SOURCE_EXT} temp/ex_jsonschema.so
-          tar -czf ex_jsonschema-nif-2.16-${{ matrix.job.target }}.tar.gz -C temp ex_jsonschema.so
-          echo "FILE_NAME=ex_jsonschema-nif-2.16-${{ matrix.job.target }}.tar.gz" >> $GITHUB_ENV
-          echo "FILE_PATH=$(pwd)/ex_jsonschema-nif-2.16-${{ matrix.job.target }}.tar.gz" >> $GITHUB_ENV
+          # Use expected filename format: libex_jsonschema-v<version>-nif-2.16-<target>.so.tar.gz
+          tar -czf libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-2.16-${{ matrix.job.target }}.so.tar.gz -C temp ex_jsonschema.so
+          echo "FILE_NAME=libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-2.16-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
+          echo "FILE_PATH=$(pwd)/libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-2.16-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

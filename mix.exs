@@ -1,7 +1,7 @@
 defmodule ExJsonschema.MixProject do
   use Mix.Project
 
-  @version "0.1.1"
+  @version "0.1.2"
   @source_url "https://github.com/hassox/ex_jsonschema"
   @description "High-performance JSON Schema validation for Elixir using Rust"
 
@@ -22,6 +22,11 @@ defmodule ExJsonschema.MixProject do
       name: "ExJsonschema",
       source_url: @source_url,
       homepage_url: @source_url,
+      config: [
+        rustler_precompiled: [
+          nif_versions: ["2.16"]
+        ]
+      ],
 
       # Test coverage configuration
       test_coverage: [

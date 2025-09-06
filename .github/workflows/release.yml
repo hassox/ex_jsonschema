@@ -14,6 +14,16 @@ on:
 permissions:
   contents: write
   actions: read
+env:
+  PROJECT_VERSION: ${{ github.ref_name }} # gets "v0.1.10" on tag runs
+  # List the NIF versions you ship (order matters; newer first)
+  RUSTLER_NIF_VERSIONS: "2.16 2.15"
+  # List all target triples you build (must match your matrix)
+  RUSTLER_TARGETS: |
+    aarch64-apple-darwin
+    x86_64-apple-darwin
+    x86_64-unknown-linux-gnu
+    x86_64-unknown-linux-musl
 
 jobs:
   build_release:
@@ -33,11 +43,6 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Extract project version
-        shell: bash
-        run: |
-          echo "PROJECT_VERSION=$(sed -n 's/.*@version *"\(.*\)".*/\1/p' mix.exs | head -n1)" >> $GITHUB_ENV
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -54,6 +59,7 @@ jobs:
           cd native/ex_jsonschema
           NIF_FEATURE="nif_version_${{ matrix.nif }}"
           NIF_FEATURE="${NIF_FEATURE//./_}"   # replace '.' with '_'
+          VER="${PROJECT_VERSION#v}"  
           cargo build --release --target ${{ matrix.job.target }} --features "$NIF_FEATURE"
 
           mkdir temp
@@ -65,9 +71,9 @@ jobs:
           fi
           # Copy and rename to ex_jsonschema.so for RustlerPrecompiled
           cp target/${{ matrix.job.target }}/release/libex_jsonschema${SOURCE_EXT} temp/ex_jsonschema.so
-          tar -czf libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz -C temp ex_jsonschema.so
-          echo "FILE_NAME=libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
-          echo "FILE_PATH=$(pwd)/libex_jsonschema-v${{ env.PROJECT_VERSION }}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
+          tar -czf libex_jsonschema-v${VER}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz -C temp ex_jsonschema.so
+          echo "FILE_NAME=libex_jsonschema-v${VER}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
+          echo "FILE_PATH=$(pwd)/libex_jsonschema-v${VER}-nif-${{ matrix.nif }}-${{ matrix.job.target }}.so.tar.gz" >> $GITHUB_ENV
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -98,9 +104,11 @@ jobs:
 
       - name: Install dependencies
         run: mix deps.get
+        env:
+          EX_JSONSCHEMA_BUILD: "1"
       
       # ⬅️ 1) Pull all tarballs produced by the build job(s)
-      - name: Download build artifacts
+      - name: Download build artifacts (ALL)
         uses: actions/download-artifact@v4
         with:
           path: precompiled
@@ -111,7 +119,38 @@ jobs:
         run: |
           shopt -s globstar
           mv precompiled/**/*.tar.gz . || true
+          echo "Tarballs staged:"
+          ls -1 *.tar.gz || true
 
+
+      - name: Validate all expected precompiled archives are present
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Normalize version (strip leading "v")
+          VER="${PROJECT_VERSION#v}"
+          echo "Expecting tarballs for version: $VER"
+          echo "Targets:"
+          echo "${RUSTLER_TARGETS}"
+          echo "NIF versions: ${RUSTLER_NIF_VERSIONS}"
+      
+          missing=0
+          for nif in ${RUSTLER_NIF_VERSIONS}; do
+            for tgt in ${RUSTLER_TARGETS}; do
+              f="libex_jsonschema-v${VER}-nif-${nif}-${tgt}.so.tar.gz"
+              if [[ ! -f "$f" ]]; then
+                echo "::error::Missing artifact: $f"
+                missing=1
+              else
+                echo "Found: $f"
+              fi
+            done
+          done
+
+          if [[ "$missing" -ne 0 ]]; then
+            echo "::error::One or more precompiled archives are missing. Failing publish."
+            exit 1
+          fi
 
       # ⬅️ 3) Generate the checksum file from local tarballs
       - name: Generate rustler_precompiled checksum file

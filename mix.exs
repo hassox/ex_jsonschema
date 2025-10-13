@@ -84,6 +84,18 @@ defmodule ExJsonschema.MixProject do
         "README.md",
         "LICENSE*"
       ],
+      exclude_patterns: [
+        ~r/_build/,
+        ~r/deps/,
+        # Excludes local NIFs
+        ~r/priv\/native\/.*\.so$/,
+        # Excludes local NIFs
+        ~r/priv\/native\/.*\.dylib$/,
+        # Excludes local NIFs
+        ~r/priv\/native\/.*\.dll$/,
+        # Excludes the entire large target directory
+        ~r/native\/ex_jsonschema\/target/
+      ],
       licenses: ["MIT"],
       links: %{
         "GitHub" => @source_url,

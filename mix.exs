@@ -1,7 +1,7 @@
 defmodule ExJsonschema.MixProject do
   use Mix.Project
 
-  @version "0.1.15"
+  @version "0.1.16"
   @source_url "https://github.com/hassox/ex_jsonschema"
   @description "High-performance JSON Schema validation for Elixir using Rust"
 
@@ -17,6 +17,16 @@ defmodule ExJsonschema.MixProject do
       package: package(),
       docs: docs(),
       rustler_crates: rustler_crates(),
+      rustler_precompiled: [
+        targets: [
+          "aarch64-apple-darwin",
+          "aarch64-unknown-linux-gnu",
+          "x86_64-apple-darwin",
+          "x86_64-unknown-linux-gnu",
+          "x86_64-unknown-linux-musl"
+        ],
+        nif_versions: [2.15, 2.16]
+      ],
 
       # Additional metadata for better discoverability
       name: "ExJsonschema",

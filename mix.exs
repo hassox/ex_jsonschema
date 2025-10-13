@@ -1,7 +1,7 @@
 defmodule ExJsonschema.MixProject do
   use Mix.Project
 
-  @version "0.1.16"
+  @version "0.1.17"
   @source_url "https://github.com/hassox/ex_jsonschema"
   @description "High-performance JSON Schema validation for Elixir using Rust"
 
@@ -62,8 +62,8 @@ defmodule ExJsonschema.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.36"},
-      {:rustler_precompiled, "~> 0.8"},
+      {:rustler, "~> 0.37.1"},
+      {:rustler_precompiled, "~> 0.8.3"},
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

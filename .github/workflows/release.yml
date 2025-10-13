@@ -51,6 +51,18 @@ jobs:
           toolchain: stable
           target: ${{ matrix.job.target }}
 
+      # --- START OF NEW CROSS-COMPILER CONFIGURATION ---
+      - name: Install AArch64 Cross-Compiler and Linker (for aarch64-unknown-linux-gnu)
+        # This condition ensures the step only runs for the specific target and OS
+        if: startsWith(matrix.job.os, 'ubuntu') && contains(matrix.job.target, 'aarch64')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+          
+          # Set the linker environment variable for the aarch64 target
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+      # --- END OF NEW CROSS-COMPILER CONFIGURATION ---
+
       - name: Install musl tools (for musl targets)
         if: startsWith(matrix.job.os, 'ubuntu') && contains(matrix.job.target, 'musl')
         run: sudo apt-get update && sudo apt-get install -y musl-tools

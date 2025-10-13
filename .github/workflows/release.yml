@@ -21,6 +21,7 @@ env:
   # List all target triples you build (must match your matrix)
   RUSTLER_TARGETS: |
     aarch64-apple-darwin
+    aarch64-unknown-linux-gnu
     x86_64-apple-darwin
     x86_64-unknown-linux-gnu
     x86_64-unknown-linux-musl
@@ -36,6 +37,7 @@ jobs:
         job:
           - { target: aarch64-apple-darwin, os: macos-14 }
           - { target: x86_64-apple-darwin, os: macos-13 }
+          - { target: aarch64-unknown-linux-gnu, os: ubuntu-22.04 }
           - { target: x86_64-unknown-linux-gnu, os: ubuntu-22.04 }
           - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04 }
 

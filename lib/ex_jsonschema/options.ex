@@ -64,6 +64,15 @@ defmodule ExJsonschema.Options do
   """
   @type output_format :: :basic | :detailed | :verbose
 
+  @typedoc """
+  External schema resolution mode.
+
+  - `:ignore` - Silently ignore all external `$ref`s (default, no network I/O)
+  - `:http` - Use the Rust crate's built-in HTTP fetching (original behavior)
+  - `%{String.t() => String.t()}` - Pre-resolved map of URI → JSON string
+  """
+  @type external_schemas :: :ignore | :http | %{String.t() => String.t()}
+
   defstruct [
     # Draft specification
     draft: :auto,
@@ -75,14 +84,22 @@ defmodule ExJsonschema.Options do
     regex_engine: :fancy_regex,
 
     # Output control
-    output_format: :detailed
+    output_format: :detailed,
+
+    # External schema resolution
+    external_schemas: :ignore,
+
+    # Behaviour module for resolving external $ref URIs
+    ref_resolver: nil
   ]
 
   @type t :: %__MODULE__{
           draft: draft(),
           validate_formats: boolean(),
           regex_engine: regex_engine(),
-          output_format: output_format()
+          output_format: output_format(),
+          external_schemas: external_schemas(),
+          ref_resolver: module() | nil
         }
 
   @doc """
@@ -213,7 +230,9 @@ defmodule ExJsonschema.Options do
   def validate(%__MODULE__{} = options) do
     with :ok <- validate_draft(options.draft),
          :ok <- validate_regex_engine(options.regex_engine),
-         :ok <- validate_output_format(options.output_format) do
+         :ok <- validate_output_format(options.output_format),
+         :ok <- validate_external_schemas(options.external_schemas),
+         :ok <- validate_ref_resolver(options.ref_resolver) do
       {:ok, options}
     end
   end
@@ -229,4 +248,25 @@ defmodule ExJsonschema.Options do
 
   defp validate_output_format(format) when format in [:basic, :detailed, :verbose], do: :ok
   defp validate_output_format(format), do: {:error, "Invalid output format: #{inspect(format)}"}
+
+  defp validate_external_schemas(:ignore), do: :ok
+  defp validate_external_schemas(:http), do: :ok
+  defp validate_external_schemas(%{} = map) when map_size(map) >= 0, do: :ok
+
+  defp validate_external_schemas(other),
+    do: {:error, "Invalid external_schemas: #{inspect(other)}. Must be :ignore, :http, or a map"}
+
+  defp validate_ref_resolver(nil), do: :ok
+
+  defp validate_ref_resolver(module) when is_atom(module) do
+    if Code.ensure_loaded?(module) and function_exported?(module, :resolve, 1) do
+      :ok
+    else
+      {:error,
+       "ref_resolver #{inspect(module)} must implement ExJsonschema.RefResolver behaviour"}
+    end
+  end
+
+  defp validate_ref_resolver(other),
+    do: {:error, "Invalid ref_resolver: #{inspect(other)}. Must be nil or a module"}
 end

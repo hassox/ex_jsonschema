@@ -1,7 +1,7 @@
 defmodule ExJsonschema.MixProject do
   use Mix.Project
 
-  @version "0.1.17"
+  @version "0.2.0"
   @source_url "https://github.com/hassox/ex_jsonschema"
   @description "High-performance JSON Schema validation for Elixir using Rust"
 
@@ -134,7 +134,7 @@ defmodule ExJsonschema.MixProject do
         Core: [ExJsonschema],
         Configuration: [ExJsonschema.Options, ExJsonschema.Profile],
         Errors: [ExJsonschema.ValidationError, ExJsonschema.CompilationError],
-        Behaviors: [ExJsonschema.Cache],
+        Behaviors: [ExJsonschema.Cache, ExJsonschema.RefResolver],
         Internal: [ExJsonschema.Native, ExJsonschema.DraftDetector]
       ]
     ]

@@ -39,12 +39,10 @@ defmodule ExJsonschema.MetaValidatorTest do
       assert MetaValidator.valid?(invalid_structure) == false
     end
 
-    test "raises ArgumentError for malformed JSON" do
+    test "returns false for malformed JSON" do
       malformed_json = ~s({"type": "string)
 
-      assert_raise ArgumentError, ~r/Invalid JSON/, fn ->
-        MetaValidator.valid?(malformed_json)
-      end
+      refute MetaValidator.valid?(malformed_json)
     end
   end
 
@@ -150,9 +148,10 @@ defmodule ExJsonschema.MetaValidatorTest do
     test "returns error for malformed JSON" do
       malformed_json = ~s({"type": "string)
 
-      assert {:error, reason} = MetaValidator.validate(malformed_json)
-      assert is_binary(reason)
-      assert String.contains?(reason, "Invalid JSON")
+      assert {:error, [%ExJsonschema.ValidationError{} = error]} =
+               MetaValidator.validate(malformed_json)
+
+      assert error.message =~ "Invalid JSON" or error.message =~ "Draft detection failed"
     end
   end
 
@@ -170,10 +169,10 @@ defmodule ExJsonschema.MetaValidatorTest do
       end
     end
 
-    test "raises ArgumentError for malformed JSON" do
+    test "raises for malformed JSON" do
       malformed_json = ~s({"type": "string)
 
-      assert_raise ArgumentError, ~r/Invalid JSON/, fn ->
+      assert_raise ExJsonschema.ValidationError, fn ->
         MetaValidator.validate!(malformed_json)
       end
     end
@@ -312,6 +311,78 @@ defmodule ExJsonschema.MetaValidatorTest do
       })
 
       assert MetaValidator.valid?(large_schema) == true
+    end
+  end
+
+  describe "schemas with external $ref URIs" do
+    test "valid?/1 does not hang on schemas with external refs" do
+      schema =
+        Jason.encode!(%{
+          "type" => "object",
+          "properties" => %{
+            "address" => %{"$ref" => "https://nonexistent.example.com/address.json"}
+          }
+        })
+
+      # This would deadlock before the fix — the NIF tried to HTTP-fetch the ref
+      assert MetaValidator.valid?(schema) == true
+    end
+
+    test "valid?/1 does not hang on localhost refs" do
+      schema =
+        Jason.encode!(%{
+          "type" => "object",
+          "properties" => %{
+            "data" => %{"$ref" => "http://localhost:4000/schemas/data.json"}
+          }
+        })
+
+      # Localhost refs are the deadlock killer — reqwest blocks waiting for
+      # the same BEAM process that's inside the NIF
+      assert MetaValidator.valid?(schema) == true
+    end
+
+    test "validate/1 succeeds with external refs" do
+      schema =
+        Jason.encode!(%{
+          "$ref" => "https://raw.githubusercontent.com/some/schema.json"
+        })
+
+      assert :ok = MetaValidator.validate(schema)
+    end
+
+    test "validate_simple/1 succeeds with external refs" do
+      schema =
+        Jason.encode!(%{
+          "allOf" => [
+            %{"$ref" => "https://example.com/base.json"},
+            %{"type" => "object"}
+          ]
+        })
+
+      assert :ok = MetaValidator.validate_simple(schema)
+    end
+  end
+
+  describe "2-arity variants with opts" do
+    test "valid?/2 accepts options" do
+      schema = ~s({"type": "string"})
+      assert MetaValidator.valid?(schema, external_schemas: :ignore)
+    end
+
+    test "validate/2 accepts options" do
+      schema = ~s({"type": "string"})
+      assert :ok = MetaValidator.validate(schema, external_schemas: :ignore)
+    end
+
+    test "validate_simple/2 accepts options" do
+      schema = ~s({"type": "string"})
+      assert :ok = MetaValidator.validate_simple(schema, external_schemas: :ignore)
+    end
+
+    test "validate!/2 accepts options" do
+      schema = ~s({"type": "string"})
+      assert :ok = MetaValidator.validate!(schema, external_schemas: :ignore)
     end
   end
 end

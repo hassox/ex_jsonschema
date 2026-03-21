@@ -48,12 +48,53 @@ schema = ~s({
 
 **That's it!** Compile your schema once, then validate as much data as you need.
 
+## External Schema Resolution
+
+Schemas that use `$ref` to reference external URLs are fully supported. By default, external refs are silently ignored (no network calls from inside the NIF). You control resolution in Elixir:
+
+```elixir
+# Default: ignore unknown $refs (permissive, no network I/O)
+{:ok, compiled} = ExJsonschema.compile(schema)
+
+# Pre-resolved map: you fetch the schemas however you want
+{:ok, compiled} = ExJsonschema.compile(schema,
+  external_schemas: %{
+    "https://example.com/address.json" => ~s({"type": "object", ...})
+  }
+)
+
+# Behaviour-based resolver: handles transitive refs automatically
+{:ok, compiled} = ExJsonschema.compile(schema, ref_resolver: MyApp.SchemaResolver)
+
+# Inspect what refs a schema needs
+{:ok, refs} = ExJsonschema.extract_refs(schema)
+#=> ["https://example.com/address.json", "https://example.com/person.json"]
+```
+
+Implement the `ExJsonschema.RefResolver` behaviour to resolve refs from HTTP, a database, the filesystem, or anything else:
+
+```elixir
+defmodule MyApp.SchemaResolver do
+  @behaviour ExJsonschema.RefResolver
+
+  @impl true
+  def resolve(uris) do
+    resolved = Map.new(uris, fn uri ->
+      {:ok, %{body: body}} = Req.get(uri)
+      {uri, body}
+    end)
+    {:ok, resolved}
+  end
+end
+```
+
 ## More Features
 
 ExJsonschema includes everything you need for production use:
 
+- **External Ref Resolution** - Behaviour-based resolver, pre-resolved maps, or ignore mode
 - **Performance Profiles** - `:strict`, `:lenient`, and `:performance` presets
-- **Flexible Output** - Choose between `:basic`, `:detailed`, and `:verbose` error formats  
+- **Flexible Output** - Choose between `:basic`, `:detailed`, and `:verbose` error formats
 - **Schema Caching** - Automatic caching for schemas with `$id` fields
 - **Stream Processing** - Works great with Elixir's `Stream` module
 - **Format Validation** - Email, URI, date-time, and more built-in formats

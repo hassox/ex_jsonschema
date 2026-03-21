@@ -91,6 +91,33 @@ defmodule ExJsonschema.OptionsTest do
 
       assert {:error, "Invalid output format: :invalid_format"} = Options.validate(opts)
     end
+
+    test "accepts valid external_schemas values" do
+      assert {:ok, _} = Options.validate(%Options{external_schemas: :ignore})
+      assert {:ok, _} = Options.validate(%Options{external_schemas: :http})
+      assert {:ok, _} = Options.validate(%Options{external_schemas: %{}})
+
+      assert {:ok, _} =
+               Options.validate(%Options{
+                 external_schemas: %{"https://example.com/a.json" => ~s({"type": "string"})}
+               })
+    end
+
+    test "rejects invalid external_schemas" do
+      opts = %Options{external_schemas: :invalid}
+      assert {:error, "Invalid external_schemas:" <> _} = Options.validate(opts)
+    end
+
+    test "rejects invalid ref_resolver" do
+      opts = %Options{ref_resolver: "not_a_module"}
+      assert {:error, "Invalid ref_resolver:" <> _} = Options.validate(opts)
+    end
+
+    test "defaults for new fields" do
+      opts = Options.new()
+      assert opts.external_schemas == :ignore
+      assert opts.ref_resolver == nil
+    end
   end
 
   describe "option combinations" do

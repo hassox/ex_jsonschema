@@ -63,19 +63,41 @@ ExJsonschema.format_errors(errors, :json, pretty: true)
 analysis = ExJsonschema.analyze_errors(errors)
 ```
 
+## External References
+
+Meta-validation uses `external_schemas: :ignore` internally, so schemas with
+external `$ref` URIs will never trigger network requests or deadlock. Unknown
+refs are treated as permissive empty schemas during meta-validation.
+
 ## Integration
 
-Meta-validation integrates seamlessly with your validation workflow:
+Meta-validation integrates seamlessly with your validation workflow. Since
+`meta_validate` uses the same compile path as `ExJsonschema.compile`, you can
+combine schema validation and compilation in a single step:
 
 ```elixir
 def validate_data_with_schema_check(schema_json, data_json) do
-  # First ensure the schema itself is valid
+  # compile/1 already validates the schema — if it compiles, it's valid
+  case ExJsonschema.compile(schema_json) do
+    {:ok, validator} ->
+      ExJsonschema.validate(validator, data_json)
+
+    {:error, compilation_error} ->
+      {:error, {:invalid_schema, compilation_error}}
+  end
+end
+```
+
+If you need an explicit meta-validation step (e.g. for user-uploaded schemas
+before storing them), use `meta_validate`:
+
+```elixir
+def validate_data_with_schema_check(schema_json, data_json) do
   case ExJsonschema.meta_validate(schema_json) do
-    :ok -> 
-      # Schema is valid, proceed with data validation
+    :ok ->
       {:ok, validator} = ExJsonschema.compile(schema_json)
       ExJsonschema.validate(validator, data_json)
-      
+
     {:error, meta_errors} ->
       {:error, {:invalid_schema, meta_errors}}
   end

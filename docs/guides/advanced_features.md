@@ -161,6 +161,94 @@ batch_profile = ExJsonschema.Options.new(
 )
 ```
 
+## External Schema Resolution
+
+JSON Schemas commonly use `$ref` to reference external schemas by URL. By default, ExJsonschema **ignores** all external refs — the NIF never makes network calls. You control how refs are resolved from Elixir.
+
+### Resolution Modes
+
+#### Ignore (Default)
+
+Unknown `$ref` URIs compile successfully and validate permissively (any value passes):
+
+```elixir
+# These external refs won't cause compilation to fail
+schema = ~s({"$ref": "https://example.com/person.json"})
+{:ok, compiled} = ExJsonschema.compile(schema)
+
+# Any value validates because the unknown ref is treated as {}
+:ok = ExJsonschema.validate(compiled, ~s("anything"))
+```
+
+#### Pre-Resolved Map
+
+Pass a map of URI → JSON string for full control:
+
+```elixir
+schema = Jason.encode!(%{
+  "type" => "object",
+  "properties" => %{
+    "address" => %{"$ref" => "https://example.com/address.json"}
+  }
+})
+
+resolved = %{
+  "https://example.com/address.json" => ~s({
+    "type": "object",
+    "properties": {"street": {"type": "string"}},
+    "required": ["street"]
+  })
+}
+
+{:ok, compiled} = ExJsonschema.compile(schema, external_schemas: resolved)
+
+# The resolved schema's constraints are enforced
+:ok = ExJsonschema.validate(compiled, ~s({"address": {"street": "123 Main"}}))
+{:error, _} = ExJsonschema.validate(compiled, ~s({"address": {}}))
+```
+
+#### Behaviour-Based Resolver
+
+Implement `ExJsonschema.RefResolver` for automatic resolution. ExJsonschema handles transitive refs — if a resolved schema itself contains `$ref`s, the resolver is called again until all refs are resolved:
+
+```elixir
+defmodule MyApp.SchemaResolver do
+  @behaviour ExJsonschema.RefResolver
+
+  @impl true
+  def resolve(uris) do
+    resolved = Map.new(uris, fn uri ->
+      {:ok, %{body: body}} = Req.get(uri)
+      {uri, body}
+    end)
+    {:ok, resolved}
+  end
+end
+
+{:ok, compiled} = ExJsonschema.compile(schema, ref_resolver: MyApp.SchemaResolver)
+```
+
+#### HTTP Mode (Opt-In)
+
+To use the Rust crate's built-in HTTP fetching (the pre-0.2.0 behavior):
+
+```elixir
+{:ok, compiled} = ExJsonschema.compile(schema, external_schemas: :http)
+```
+
+> **Warning**: This makes synchronous HTTP requests inside the NIF. Use a pre-resolved map or behaviour resolver for production workloads.
+
+### Inspecting Refs
+
+Extract all external `$ref` URIs from a schema before compiling:
+
+```elixir
+{:ok, refs} = ExJsonschema.extract_refs(schema_json)
+# => ["https://example.com/address.json", "https://example.com/person.json"]
+```
+
+This is useful for pre-fetching, caching, or auditing which external schemas a schema depends on.
+
 ## Advanced Validation Options
 
 ### Output Formats

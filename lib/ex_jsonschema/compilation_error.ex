@@ -13,7 +13,8 @@ defmodule ExJsonschema.CompilationError do
             | :compilation_error
             | :options_error
             | :detection_error
-            | :validation_error,
+            | :validation_error
+            | :ref_resolution_error,
           message: String.t(),
           details: String.t() | nil
         }
@@ -68,6 +69,18 @@ defmodule ExJsonschema.CompilationError do
       type: :detection_error,
       message: "Draft detection failed",
       details: reason
+    }
+  end
+
+  @doc """
+  Creates a CompilationError from a ref resolution failure.
+  """
+  @spec from_ref_resolution_error(term()) :: t()
+  def from_ref_resolution_error(reason) do
+    %__MODULE__{
+      type: :ref_resolution_error,
+      message: "External schema resolution failed",
+      details: inspect(reason)
     }
   end
 

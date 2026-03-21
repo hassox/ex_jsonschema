@@ -1,7 +1,7 @@
 defmodule ExJsonschema.MixProject do
   use Mix.Project
 
-  @version "0.1.16"
+  @version "0.2.0"
   @source_url "https://github.com/hassox/ex_jsonschema"
   @description "High-performance JSON Schema validation for Elixir using Rust"
 
@@ -62,8 +62,8 @@ defmodule ExJsonschema.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:rustler, "~> 0.36"},
-      {:rustler_precompiled, "~> 0.8"},
+      {:rustler, "~> 0.37.1"},
+      {:rustler_precompiled, "~> 0.8.3"},
       {:jason, "~> 1.4"},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
@@ -83,6 +83,18 @@ defmodule ExJsonschema.MixProject do
         "mix.exs",
         "README.md",
         "LICENSE*"
+      ],
+      exclude_patterns: [
+        ~r/_build/,
+        ~r/deps/,
+        # Excludes local NIFs
+        ~r/priv\/native\/.*\.so$/,
+        # Excludes local NIFs
+        ~r/priv\/native\/.*\.dylib$/,
+        # Excludes local NIFs
+        ~r/priv\/native\/.*\.dll$/,
+        # Excludes the entire large target directory
+        ~r/native\/ex_jsonschema\/target/
       ],
       licenses: ["MIT"],
       links: %{
@@ -122,7 +134,7 @@ defmodule ExJsonschema.MixProject do
         Core: [ExJsonschema],
         Configuration: [ExJsonschema.Options, ExJsonschema.Profile],
         Errors: [ExJsonschema.ValidationError, ExJsonschema.CompilationError],
-        Behaviors: [ExJsonschema.Cache],
+        Behaviors: [ExJsonschema.Cache, ExJsonschema.RefResolver],
         Internal: [ExJsonschema.Native, ExJsonschema.DraftDetector]
       ]
     ]

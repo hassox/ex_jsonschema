@@ -12,6 +12,7 @@ defmodule ExJsonschema.Native do
     nif_versions: ["2.15", "2.16"],
     targets: [
       "aarch64-apple-darwin",
+      "aarch64-unknown-linux-gnu",
       "x86_64-apple-darwin",
       "x86_64-unknown-linux-gnu",
       "x86_64-unknown-linux-musl"
@@ -48,6 +49,10 @@ defmodule ExJsonschema.Native do
 
   # Draft detection
   def detect_draft_from_schema(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Schema compilation with pre-resolved external schemas
+  def compile_schema_with_resolved_schemas(_schema_json, _options, _resolved_schemas),
+    do: :erlang.nif_error(:nif_not_loaded)
 
   # Meta-validation
   def meta_is_valid(_schema_json), do: :erlang.nif_error(:nif_not_loaded)

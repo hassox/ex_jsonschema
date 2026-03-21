@@ -1,5 +1,5 @@
 use rustler::{Atom, Encoder, Env, ResourceArc, Term};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::panic::AssertUnwindSafe;
 use thiserror::Error;
@@ -28,6 +28,9 @@ mod atoms {
         false_atom = "false",
         type_ = "type",
         message = "message",
+        // External schema resolution modes
+        ignore,
+        http,
     }
 }
 
@@ -67,11 +70,48 @@ pub struct ValidationOptionsStruct {
     pub draft: Atom,
     pub validate_formats: bool,
     pub regex_engine: Atom,
+    pub external_schemas_mode: Atom,
 }
 
 pub struct CompiledSchema {
     validator: AssertUnwindSafe<jsonschema::Validator>,
     schema: Value,
+}
+
+// -- External schema retrievers --
+
+/// Returns a permissive empty schema for every URI, effectively ignoring all
+/// external `$ref`s.  The empty object `{}` is a valid JSON Schema that
+/// accepts any value.
+struct IgnoreRetriever;
+
+impl jsonschema::Retrieve for IgnoreRetriever {
+    fn retrieve(
+        &self,
+        _uri: &jsonschema::Uri<String>,
+    ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(json!({}))
+    }
+}
+
+/// Looks up pre-resolved schemas by URI string.  Falls back to a permissive
+/// empty schema when the URI is not in the map.
+struct PreloadedRetriever {
+    schemas: HashMap<String, Value>,
+}
+
+impl jsonschema::Retrieve for PreloadedRetriever {
+    fn retrieve(
+        &self,
+        uri: &jsonschema::Uri<String>,
+    ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
+        let uri_str = uri.to_string();
+        Ok(self
+            .schemas
+            .get(&uri_str)
+            .cloned()
+            .unwrap_or_else(|| json!({})))
+    }
 }
 
 impl CompiledSchema {
@@ -153,11 +193,62 @@ impl CompiledSchema {
             );
         }
 
-        // All supported options are now implemented above.
-        // External reference resolution, annotation collection, and
-        // stop-on-first-error are not supported by jsonschema 0.33
+        // Apply external schema retriever based on mode
+        if options.external_schemas_mode == atoms::ignore() {
+            builder = builder.with_retriever(IgnoreRetriever);
+        }
+        // :http mode uses the crate's default HTTP fetching (no custom retriever)
 
         // Build the validator
+        let validator = builder
+            .build(&schema)
+            .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?;
+
+        Ok(CompiledSchema {
+            validator: AssertUnwindSafe(validator),
+            schema: schema.clone(),
+        })
+    }
+
+    fn new_with_resolved_schemas(
+        schema: Value,
+        options: ValidationOptionsStruct,
+        resolved_schemas: HashMap<String, Value>,
+    ) -> Result<Self, JsonSchemaError> {
+        let mut builder = jsonschema::options();
+
+        if options.draft != atoms::auto() {
+            builder = if options.draft == atoms::draft4() {
+                builder.with_draft(jsonschema::Draft::Draft4)
+            } else if options.draft == atoms::draft6() {
+                builder.with_draft(jsonschema::Draft::Draft6)
+            } else if options.draft == atoms::draft7() {
+                builder.with_draft(jsonschema::Draft::Draft7)
+            } else if options.draft == atoms::draft201909() {
+                builder.with_draft(jsonschema::Draft::Draft201909)
+            } else if options.draft == atoms::draft202012() {
+                builder.with_draft(jsonschema::Draft::Draft202012)
+            } else {
+                builder
+            };
+        }
+
+        if options.validate_formats {
+            builder = builder.should_validate_formats(true);
+        }
+
+        if options.regex_engine == atoms::regex() {
+            builder = builder.with_pattern_options(jsonschema::PatternOptions::regex());
+        } else {
+            builder = builder.with_pattern_options(
+                jsonschema::PatternOptions::fancy_regex().backtrack_limit(10_000),
+            );
+        }
+
+        builder = builder.with_retriever(PreloadedRetriever {
+            schemas: resolved_schemas,
+        });
+
         let validator = builder
             .build(&schema)
             .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?;
@@ -176,8 +267,8 @@ impl CompiledSchema {
                 .validator
                 .iter_errors(instance)
                 .map(|error| ValidationErrorDetail {
-                    instance_path: error.instance_path.to_string(),
-                    schema_path: error.schema_path.to_string(),
+                    instance_path: error.instance_path().to_string(),
+                    schema_path: error.schema_path().to_string(),
                     message: error.to_string(),
                 })
                 .collect();
@@ -208,8 +299,8 @@ impl CompiledSchema {
                     );
 
                     VerboseValidationErrorDetail {
-                        instance_path: error.instance_path.to_string(),
-                        schema_path: error.schema_path.to_string(),
+                        instance_path: error.instance_path().to_string(),
+                        schema_path: error.schema_path().to_string(),
                         message: error.to_string(),
                         keyword,
                         instance_value,
@@ -549,91 +640,64 @@ fn encode_json_value<'a>(env: Env<'a>, value: &Value) -> Term<'a> {
 }
 
 // Helper functions for verbose error enhancement
+
 fn extract_keyword_from_error(error: &jsonschema::ValidationError) -> String {
-    // Extract the keyword from the schema path or error kind
-    let schema_path = error.schema_path.to_string();
-    if let Some(last_segment) = schema_path.split('/').next_back() {
-        match last_segment {
-            "type" => "type".to_string(),
-            "minimum" => "minimum".to_string(),
-            "maximum" => "maximum".to_string(),
-            "minLength" => "minLength".to_string(),
-            "maxLength" => "maxLength".to_string(),
-            "pattern" => "pattern".to_string(),
-            "format" => "format".to_string(),
-            "required" => "required".to_string(),
-            "minItems" => "minItems".to_string(),
-            "maxItems" => "maxItems".to_string(),
-            "enum" => "enum".to_string(),
-            "const" => "const".to_string(),
-            "uniqueItems" => "uniqueItems".to_string(),
-            "multipleOf" => "multipleOf".to_string(),
-            _ => last_segment.to_string(), // Return the actual keyword instead of "unknown"
-        }
-    } else {
-        "unknown".to_string()
-    }
+    error.kind().keyword().to_string()
 }
 
 fn extract_values_from_error(
     error: &jsonschema::ValidationError,
-    instance: &Value,
-    schema: &Value,
+    _instance: &Value,
+    _schema: &Value,
 ) -> (Value, Value) {
-    // Get the instance value at the error path
-    let instance_value =
-        get_value_at_path(instance, &error.instance_path.to_string()).unwrap_or(Value::Null);
+    // Instance value: directly from the error (no more tree navigation)
+    let instance_value = error.instance().as_ref().clone();
 
-    // Extract schema constraint value based on the keyword
-    let schema_value = get_schema_constraint_value(error, schema);
+    // Schema/constraint value: extracted from the structured error kind
+    let schema_value = extract_constraint_from_kind(error.kind());
 
     (instance_value, schema_value)
 }
 
-fn get_schema_constraint_value(error: &jsonschema::ValidationError, schema: &Value) -> Value {
-    let schema_path = error.schema_path.to_string();
-    let keyword = extract_keyword_from_error(error);
+/// Extracts the constraint value from a `ValidationErrorKind` variant.
+///
+/// Each variant carries its own structured data (limits, patterns, expected
+/// values, etc.) so we no longer need to navigate the raw schema JSON tree.
+fn extract_constraint_from_kind(kind: &jsonschema::error::ValidationErrorKind) -> Value {
+    use jsonschema::error::ValidationErrorKind::*;
+    match kind {
+        Minimum { limit }
+        | Maximum { limit }
+        | ExclusiveMinimum { limit }
+        | ExclusiveMaximum { limit } => limit.clone(),
 
-    // Navigate to the schema location where the constraint is defined
-    if let Some(schema_location) = get_value_at_path(schema, &schema_path) {
-        // For simple constraints, return the constraint value directly
-        match keyword.as_str() {
-            "minimum" | "maximum" | "minLength" | "maxLength" | "minItems" | "maxItems"
-            | "const" | "enum" | "multipleOf" => schema_location.clone(),
-            "type" => {
-                // Navigate up one level to get the type constraint
-                let parent_path = schema_path.rsplit_once('/').map(|x| x.0).unwrap_or("");
-                if let Some(parent) = get_value_at_path(schema, parent_path) {
-                    if let Some(type_val) = parent.get("type") {
-                        return type_val.clone();
-                    }
-                }
-                Value::String("unknown".to_string())
+        MinLength { limit } | MaxLength { limit } => json!(limit),
+        MinItems { limit } | MaxItems { limit } => json!(limit),
+        MinProperties { limit } | MaxProperties { limit } => json!(limit),
+        AdditionalItems { limit } => json!(limit),
+
+        MultipleOf { multiple_of } => json!(multiple_of),
+
+        Enum { options } => options.clone(),
+        Constant { expected_value } => expected_value.clone(),
+        Pattern { pattern } => json!(pattern),
+        Format { format } => json!(format),
+        Required { property } => property.clone(),
+        Not { schema } => schema.clone(),
+
+        Type { kind: type_kind } => match type_kind {
+            jsonschema::error::TypeKind::Single(t) => Value::String(t.to_string()),
+            jsonschema::error::TypeKind::Multiple(ts) => {
+                let types: Vec<Value> = ts.iter().map(|t| Value::String(t.to_string())).collect();
+                Value::Array(types)
             }
-            "pattern" => {
-                // Navigate up to get the pattern value
-                let parent_path = schema_path.rsplit_once('/').map(|x| x.0).unwrap_or("");
-                if let Some(parent) = get_value_at_path(schema, parent_path) {
-                    if let Some(pattern_val) = parent.get("pattern") {
-                        return pattern_val.clone();
-                    }
-                }
-                Value::String("unknown pattern".to_string())
-            }
-            "required" => {
-                // Get the required property list
-                let parent_path = schema_path.rsplit_once('/').map(|x| x.0).unwrap_or("");
-                if let Some(parent) = get_value_at_path(schema, parent_path) {
-                    if let Some(required_val) = parent.get("required") {
-                        return required_val.clone();
-                    }
-                }
-                Value::Array(vec![])
-            }
-            _ => Value::String(format!("constraint: {}", keyword)),
-        }
-    } else {
-        Value::String("unknown constraint".to_string())
+        },
+
+        AdditionalProperties { unexpected }
+        | UnevaluatedProperties { unexpected }
+        | UnevaluatedItems { unexpected } => json!(unexpected),
+
+        _ => Value::Null,
     }
 }
 
@@ -675,11 +739,11 @@ fn build_error_context(
     // Add instance path and schema path for reference
     context.insert(
         "instance_path".to_string(),
-        Value::String(error.instance_path.to_string()),
+        Value::String(error.instance_path().to_string()),
     );
     context.insert(
         "schema_path".to_string(),
-        Value::String(error.schema_path.to_string()),
+        Value::String(error.schema_path().to_string()),
     );
 
     // Add expected and actual values based on error type
@@ -833,7 +897,7 @@ fn extract_annotations_from_error(
     let mut annotations = HashMap::new();
 
     // Get the schema location where the error occurred
-    let schema_path = error.schema_path.to_string();
+    let schema_path = error.schema_path().to_string();
     if let Some(Value::Object(schema_obj)) = get_value_at_path(schema, &schema_path) {
         // Extract common annotations that might be present
         // Add title annotation if present
@@ -878,7 +942,7 @@ fn extract_annotations_from_error(
     );
     annotations.insert(
         "validation_failed_at".to_string(),
-        Value::String(error.instance_path.to_string()),
+        Value::String(error.instance_path().to_string()),
     );
 
     annotations
@@ -1162,6 +1226,63 @@ fn compile_schema_with_options(
             return (atoms::error(), error_map).encode(env);
         }
     };
+
+    let resource = ResourceArc::new(compiled);
+    (atoms::ok(), resource).encode(env)
+}
+
+#[rustler::nif]
+fn compile_schema_with_resolved_schemas(
+    env: Env,
+    schema_json: String,
+    options: ValidationOptionsStruct,
+    resolved_schemas: HashMap<String, String>,
+) -> Term {
+    let schema_value: Value = match serde_json::from_str(&schema_json) {
+        Ok(value) => value,
+        Err(e) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "json_parse_error".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), e.to_string().encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+    };
+
+    // Parse each JSON string in the resolved schemas map
+    let mut parsed_schemas: HashMap<String, Value> = HashMap::new();
+    for (url, json_str) in resolved_schemas {
+        match serde_json::from_str::<Value>(&json_str) {
+            Ok(value) => {
+                parsed_schemas.insert(url, value);
+            }
+            Err(e) => {
+                let error_map = rustler::types::map::map_new(env)
+                    .map_put("type".encode(env), "json_parse_error".encode(env))
+                    .unwrap()
+                    .map_put(
+                        "message".encode(env),
+                        format!("Invalid JSON in resolved schema for '{}': {}", url, e).encode(env),
+                    )
+                    .unwrap();
+                return (atoms::error(), error_map).encode(env);
+            }
+        }
+    }
+
+    let compiled =
+        match CompiledSchema::new_with_resolved_schemas(schema_value, options, parsed_schemas) {
+            Ok(compiled) => compiled,
+            Err(e) => {
+                let error_map = rustler::types::map::map_new(env)
+                    .map_put("type".encode(env), "compilation_error".encode(env))
+                    .unwrap()
+                    .map_put("message".encode(env), e.to_string().encode(env))
+                    .unwrap();
+                return (atoms::error(), error_map).encode(env);
+            }
+        };
 
     let resource = ResourceArc::new(compiled);
     (atoms::ok(), resource).encode(env)

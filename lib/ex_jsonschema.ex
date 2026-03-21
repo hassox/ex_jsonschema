@@ -828,6 +828,40 @@ defmodule ExJsonschema do
   @spec meta_validate!(binary()) :: :ok
   defdelegate meta_validate!(schema_json), to: MetaValidator, as: :validate!
 
+  @doc """
+  Extracts all external `$ref` URIs from a JSON Schema string.
+
+  Walks the schema tree and collects every `$ref` value that is not a local
+  fragment reference (i.e., does not start with `#`). Returns a deduplicated
+  list of URI strings.
+
+  ## Examples
+
+      iex> schema = ~s({"$ref": "https://example.com/person.json"})
+      iex> ExJsonschema.extract_refs(schema)
+      {:ok, ["https://example.com/person.json"]}
+
+      iex> schema = ~s({"$ref": "#/definitions/name"})
+      iex> ExJsonschema.extract_refs(schema)
+      {:ok, []}
+
+  """
+  @spec extract_refs(json_string()) :: {:ok, [String.t()]} | {:error, String.t()}
+  def extract_refs(schema_json) when is_binary(schema_json) do
+    case Jason.decode(schema_json) do
+      {:ok, decoded} ->
+        refs =
+          decoded
+          |> collect_refs()
+          |> MapSet.to_list()
+
+        {:ok, refs}
+
+      {:error, %Jason.DecodeError{} = e} ->
+        {:error, "Invalid JSON: #{Exception.message(e)}"}
+    end
+  end
+
   # Private helper functions for validation options
 
   defp validate_and_normalize_options(opts) do
@@ -1032,26 +1066,51 @@ defmodule ExJsonschema do
   end
 
   defp compile_without_cache(schema_json, %Options{} = options) do
-    # Single transformation point: Options -> Native ValidationOptions
     native_options = ExJsonschema.Native.ValidationOptions.from_options(options)
 
     case validate_compilation_options(schema_json, options) do
       :ok ->
-        Logger.debug("Using jsonschema::options() builder compilation")
-
-        case Native.compile_schema_with_options(schema_json, native_options) do
-          {:ok, compiled} ->
-            Logger.debug("Native compilation with options successful")
-            {:ok, compiled}
-
-          {:error, error_map} ->
-            Logger.error("Native compilation failed", %{error_map: error_map})
-            {:error, CompilationError.from_map(error_map)}
-        end
+        compile_with_resolution(schema_json, native_options, options)
 
       {:error, reason} ->
-        Logger.warning("Compilation options validation failed", %{reason: reason})
         {:error, CompilationError.from_validation_error(reason)}
+    end
+  end
+
+  # Route to the right NIF based on ref_resolver / external_schemas config
+  defp compile_with_resolution(schema_json, native_options, %Options{} = options) do
+    case {options.ref_resolver, options.external_schemas} do
+      {nil, mode} when mode in [:ignore, :http] ->
+        # Simple mode — handled entirely by the Rust retriever
+        compile_via_nif(schema_json, native_options)
+
+      {nil, %{} = map} ->
+        # Pre-resolved map supplied directly by the caller
+        compile_with_resolved_map(schema_json, native_options, map)
+
+      {resolver_module, _} ->
+        # Behaviour-based resolver — extract refs, resolve, pass map to NIF
+        case resolve_all_refs(schema_json, resolver_module) do
+          {:ok, resolved} ->
+            compile_with_resolved_map(schema_json, native_options, resolved)
+
+          {:error, reason} ->
+            {:error, CompilationError.from_ref_resolution_error(reason)}
+        end
+    end
+  end
+
+  defp compile_via_nif(schema_json, native_options) do
+    case Native.compile_schema_with_options(schema_json, native_options) do
+      {:ok, compiled} -> {:ok, compiled}
+      {:error, error_map} -> {:error, CompilationError.from_map(error_map)}
+    end
+  end
+
+  defp compile_with_resolved_map(schema_json, native_options, resolved_map) do
+    case Native.compile_schema_with_resolved_schemas(schema_json, native_options, resolved_map) do
+      {:ok, compiled} -> {:ok, compiled}
+      {:error, error_map} -> {:error, CompilationError.from_map(error_map)}
     end
   end
 
@@ -1104,5 +1163,64 @@ defmodule ExJsonschema do
     end
   rescue
     _ -> {:error, :no_id}
+  end
+
+  # -- Ref extraction & resolution helpers --
+
+  defp collect_refs(value, acc \\ MapSet.new())
+
+  defp collect_refs(%{"$ref" => ref} = map, acc) when is_binary(ref) do
+    acc = if String.starts_with?(ref, "#"), do: acc, else: MapSet.put(acc, ref)
+    # Continue walking — there may be siblings (e.g., in older drafts)
+    Enum.reduce(map, acc, fn
+      {"$ref", _}, inner_acc -> inner_acc
+      {_k, v}, inner_acc -> collect_refs(v, inner_acc)
+    end)
+  end
+
+  defp collect_refs(%{} = map, acc) do
+    Enum.reduce(map, acc, fn {_k, v}, inner_acc -> collect_refs(v, inner_acc) end)
+  end
+
+  defp collect_refs(list, acc) when is_list(list) do
+    Enum.reduce(list, acc, fn item, inner_acc -> collect_refs(item, inner_acc) end)
+  end
+
+  defp collect_refs(_scalar, acc), do: acc
+
+  defp resolve_all_refs(schema_json, resolver_module) do
+    resolve_refs_loop(schema_json, resolver_module, %{}, MapSet.new())
+  end
+
+  defp resolve_refs_loop(schema_json, resolver, resolved, seen) do
+    with {:ok, refs} <- extract_refs(schema_json) do
+      new_refs = Enum.reject(refs, &MapSet.member?(seen, &1))
+
+      if new_refs == [] do
+        {:ok, resolved}
+      else
+        case resolver.resolve(new_refs) do
+          {:ok, newly_resolved} ->
+            combined = Map.merge(resolved, newly_resolved)
+            new_seen = MapSet.union(seen, MapSet.new(new_refs))
+
+            # Recursively resolve refs found inside the newly-resolved schemas
+            Enum.reduce_while(newly_resolved, {:ok, combined, new_seen}, fn
+              {_url, sub_json}, {:ok, acc, s} ->
+                case resolve_refs_loop(sub_json, resolver, acc, s) do
+                  {:ok, new_acc} -> {:cont, {:ok, new_acc, s}}
+                  {:error, _} = err -> {:halt, err}
+                end
+            end)
+            |> case do
+              {:ok, final, _seen} -> {:ok, final}
+              {:error, _} = err -> err
+            end
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+      end
+    end
   end
 end

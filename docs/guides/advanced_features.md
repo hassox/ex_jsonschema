@@ -182,7 +182,7 @@ schema = ~s({"$ref": "https://example.com/person.json"})
 
 #### Pre-Resolved Map
 
-Pass a map of URI → JSON string for full control:
+Pass a map of URI → JSON string for full control. Key each document by its absolute URI without a fragment — that is what the validator looks up:
 
 ```elixir
 schema = Jason.encode!(%{
@@ -227,6 +227,26 @@ end
 
 {:ok, compiled} = ExJsonschema.compile(schema, ref_resolver: MyApp.SchemaResolver)
 ```
+
+The resolver always receives absolute URIs without a fragment, and only for documents the validator actually needs. A relative `$ref` such as `"address.json"` inside a document with `"$id": "https://example.com/person.json"` (or one resolved under that URI) is requested as `https://example.com/address.json`. A root schema without `$id` uses the base URI `json-schema:///`. `$ref`s inside annotations, instance data (`examples`, `default`, `const`, `enum`) or unknown keywords are not requested unless a local `$ref` points into them. Return `{:error, reason}` to fail compilation with a `:ref_resolution_error`; URIs missing from the returned map are treated as permissive empty schemas.
+
+#### Restricting Which Refs Are Resolved
+
+Pass `allowed_refs:` with a `ref_resolver` to limit which URIs the resolver may be asked for. Each entry is either a domain, allowing any `http`/`https` document on exactly that host, or an absolute URI, allowing exactly that document:
+
+```elixir
+{:ok, compiled} =
+  ExJsonschema.compile(schema,
+    ref_resolver: MyApp.SchemaResolver,
+    allowed_refs: ["schemas.example.com", "https://partner.example.org/order.json"]
+  )
+```
+
+If the validator needs any URI outside the list, directly or transitively, compilation fails with a `:ref_resolution_error` naming it, and the resolver is never asked for it. `allowed_refs: []` allows no external documents at all. The bundled meta-schemas never need listing.
+
+#### Official Meta-Schemas
+
+The JSON Schema meta-schemas for drafts 4, 6, 7, 2019-09 and 2020-12 are bundled with the validator. A `$ref` to one of them (for example `"https://json-schema.org/draft/2020-12/schema"`, to declare that a value must itself be a JSON Schema) resolves without any network I/O, in every mode, whatever draft the referring schema uses. The resolver is never asked for them.
 
 #### HTTP Mode (Opt-In)
 

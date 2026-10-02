@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-01
+
+### Added
+
+- **`allowed_refs:` compile option** — limits which external URIs a `ref_resolver` may be asked for. Entries are domains (any `http`/`https` document on that host) or exact document URIs. A needed URI outside the list fails compilation with a `:ref_resolution_error` naming it, without calling the resolver. Defaults to `:all`; only valid together with `ref_resolver`
+
+### Changed
+
+- **The validator decides which documents a `ref_resolver` is asked for.** Transitive resolution now builds the validator against what has been resolved so far and asks it which URIs are missing, one resolver call per dependency depth, instead of walking every `$ref` string in the JSON. As a result:
+  - relative `$ref`s are resolved against their base URI (nearest `$id`, else the URI their document was resolved under, else `json-schema:///`). Previously a document such as the 2020-12 meta-schema (`"$ref": "meta/core"`) produced bare relative strings no resolver could fetch
+  - resolvers receive fragment-less URIs, which is what the validator looks documents up by. A resolver keyed by `https://example.com/defs.json#/$defs/x` was never consulted, and the ref silently fell back to a permissive empty schema
+  - `$ref`s in annotations, instance data (`examples`, `default`, `const`, `enum`) or unknown keywords are no longer requested unless a local `$ref` points into them
+  - official `json-schema.org` meta-schemas are never sent to the resolver
+- `CompilationError` details for a `:ref_resolution_error` with a string reason now carry the string itself rather than its `inspect/1` form
+
+### Fixed
+
+- **Cross-draft meta-schema `$ref`s compile** — a 2020-12 schema that refs the draft-07 (or 2019-09, draft-06, draft-04) meta-schema failed with "Resource ... is not present in a registry". Every bundled meta-schema is now available whatever the referring schema's draft, in all `external_schemas` modes
+
 ## [0.2.0] - 2026-03-20
 
 ### Added

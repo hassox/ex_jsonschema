@@ -2,6 +2,7 @@ use rustler::{Atom, Encoder, Env, ResourceArc, Term};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::panic::AssertUnwindSafe;
+use std::sync::{Arc, Mutex};
 use thiserror::Error;
 
 mod atoms {
@@ -95,9 +96,20 @@ impl jsonschema::Retrieve for IgnoreRetriever {
 }
 
 /// Looks up pre-resolved schemas by URI string.  Falls back to a permissive
-/// empty schema when the URI is not in the map.
+/// empty schema when the URI is not in the map, recording the URI in
+/// `missing` so a caller can resolve it and build again.
 struct PreloadedRetriever {
     schemas: HashMap<String, Value>,
+    missing: Arc<Mutex<Vec<String>>>,
+}
+
+impl PreloadedRetriever {
+    fn new(schemas: HashMap<String, Value>) -> Self {
+        PreloadedRetriever {
+            schemas,
+            missing: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
 }
 
 impl jsonschema::Retrieve for PreloadedRetriever {
@@ -106,11 +118,54 @@ impl jsonschema::Retrieve for PreloadedRetriever {
         uri: &jsonschema::Uri<String>,
     ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         let uri_str = uri.to_string();
-        Ok(self
-            .schemas
-            .get(&uri_str)
-            .cloned()
-            .unwrap_or_else(|| json!({})))
+        match self.schemas.get(&uri_str) {
+            Some(schema) => Ok(schema.clone()),
+            None => {
+                if let Ok(mut missing) = self.missing.lock() {
+                    missing.push(uri_str);
+                }
+                Ok(json!({}))
+            }
+        }
+    }
+}
+
+/// Builder configured from the Elixir options: draft, format validation and
+/// regex engine, seeded with every bundled JSON Schema meta-schema (draft 4
+/// through 2020-12).  The `referencing` crawler never retrieves
+/// `json-schema.org` meta-schema refs and on its own only injects the
+/// meta-schemas for the document's draft, so without this baseline a 2020-12
+/// schema that `$ref`s the draft-07 meta-schema fails to compile.
+fn configured_options(options: &ValidationOptionsStruct) -> jsonschema::ValidationOptions {
+    let mut builder = jsonschema::options().with_registry(referencing::SPECIFICATIONS.clone());
+
+    if options.draft != atoms::auto() {
+        builder = if options.draft == atoms::draft4() {
+            builder.with_draft(jsonschema::Draft::Draft4)
+        } else if options.draft == atoms::draft6() {
+            builder.with_draft(jsonschema::Draft::Draft6)
+        } else if options.draft == atoms::draft7() {
+            builder.with_draft(jsonschema::Draft::Draft7)
+        } else if options.draft == atoms::draft201909() {
+            builder.with_draft(jsonschema::Draft::Draft201909)
+        } else if options.draft == atoms::draft202012() {
+            builder.with_draft(jsonschema::Draft::Draft202012)
+        } else {
+            builder // Unknown draft, use default
+        };
+    }
+
+    if options.validate_formats {
+        builder = builder.should_validate_formats(true);
+    }
+
+    if options.regex_engine == atoms::regex() {
+        // Use safer regex engine
+        builder.with_pattern_options(jsonschema::PatternOptions::regex())
+    } else {
+        // Use fancy_regex with security limits
+        builder
+            .with_pattern_options(jsonschema::PatternOptions::fancy_regex().backtrack_limit(10_000))
     }
 }
 
@@ -157,41 +212,7 @@ impl CompiledSchema {
         schema: Value,
         options: ValidationOptionsStruct,
     ) -> Result<Self, JsonSchemaError> {
-        // Start with the jsonschema::options() builder
-        let mut builder = jsonschema::options();
-
-        // Set draft version if not auto
-        if options.draft != atoms::auto() {
-            builder = if options.draft == atoms::draft4() {
-                builder.with_draft(jsonschema::Draft::Draft4)
-            } else if options.draft == atoms::draft6() {
-                builder.with_draft(jsonschema::Draft::Draft6)
-            } else if options.draft == atoms::draft7() {
-                builder.with_draft(jsonschema::Draft::Draft7)
-            } else if options.draft == atoms::draft201909() {
-                builder.with_draft(jsonschema::Draft::Draft201909)
-            } else if options.draft == atoms::draft202012() {
-                builder.with_draft(jsonschema::Draft::Draft202012)
-            } else {
-                builder // Unknown draft, use default
-            };
-        }
-
-        // Configure format validation
-        if options.validate_formats {
-            builder = builder.should_validate_formats(true);
-        }
-
-        // Configure regex engine for security
-        if options.regex_engine == atoms::regex() {
-            // Use safer regex engine
-            builder = builder.with_pattern_options(jsonschema::PatternOptions::regex());
-        } else {
-            // Use fancy_regex with security limits
-            builder = builder.with_pattern_options(
-                jsonschema::PatternOptions::fancy_regex().backtrack_limit(10_000),
-            );
-        }
+        let mut builder = configured_options(&options);
 
         // Apply external schema retriever based on mode
         if options.external_schemas_mode == atoms::ignore() {
@@ -215,41 +236,8 @@ impl CompiledSchema {
         options: ValidationOptionsStruct,
         resolved_schemas: HashMap<String, Value>,
     ) -> Result<Self, JsonSchemaError> {
-        let mut builder = jsonschema::options();
-
-        if options.draft != atoms::auto() {
-            builder = if options.draft == atoms::draft4() {
-                builder.with_draft(jsonschema::Draft::Draft4)
-            } else if options.draft == atoms::draft6() {
-                builder.with_draft(jsonschema::Draft::Draft6)
-            } else if options.draft == atoms::draft7() {
-                builder.with_draft(jsonschema::Draft::Draft7)
-            } else if options.draft == atoms::draft201909() {
-                builder.with_draft(jsonschema::Draft::Draft201909)
-            } else if options.draft == atoms::draft202012() {
-                builder.with_draft(jsonschema::Draft::Draft202012)
-            } else {
-                builder
-            };
-        }
-
-        if options.validate_formats {
-            builder = builder.should_validate_formats(true);
-        }
-
-        if options.regex_engine == atoms::regex() {
-            builder = builder.with_pattern_options(jsonschema::PatternOptions::regex());
-        } else {
-            builder = builder.with_pattern_options(
-                jsonschema::PatternOptions::fancy_regex().backtrack_limit(10_000),
-            );
-        }
-
-        builder = builder.with_retriever(PreloadedRetriever {
-            schemas: resolved_schemas,
-        });
-
-        let validator = builder
+        let validator = configured_options(&options)
+            .with_retriever(PreloadedRetriever::new(resolved_schemas))
             .build(&schema)
             .map_err(|e| JsonSchemaError::CompilationError(e.to_string()))?;
 
@@ -1250,26 +1238,17 @@ fn compile_schema_with_resolved_schemas(
         }
     };
 
-    // Parse each JSON string in the resolved schemas map
-    let mut parsed_schemas: HashMap<String, Value> = HashMap::new();
-    for (url, json_str) in resolved_schemas {
-        match serde_json::from_str::<Value>(&json_str) {
-            Ok(value) => {
-                parsed_schemas.insert(url, value);
-            }
-            Err(e) => {
-                let error_map = rustler::types::map::map_new(env)
-                    .map_put("type".encode(env), "json_parse_error".encode(env))
-                    .unwrap()
-                    .map_put(
-                        "message".encode(env),
-                        format!("Invalid JSON in resolved schema for '{}': {}", url, e).encode(env),
-                    )
-                    .unwrap();
-                return (atoms::error(), error_map).encode(env);
-            }
+    let parsed_schemas = match parse_resolved_schemas(resolved_schemas) {
+        Ok(parsed) => parsed,
+        Err(message) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), "json_parse_error".encode(env))
+                .unwrap()
+                .map_put("message".encode(env), message.encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
         }
-    }
+    };
 
     let compiled =
         match CompiledSchema::new_with_resolved_schemas(schema_value, options, parsed_schemas) {
@@ -1286,6 +1265,67 @@ fn compile_schema_with_resolved_schemas(
 
     let resource = ResourceArc::new(compiled);
     (atoms::ok(), resource).encode(env)
+}
+
+/// Parses each JSON string in a resolved-schemas map.
+fn parse_resolved_schemas(
+    resolved_schemas: HashMap<String, String>,
+) -> Result<HashMap<String, Value>, String> {
+    resolved_schemas
+        .into_iter()
+        .map(|(url, json_str)| {
+            serde_json::from_str::<Value>(&json_str)
+                .map(|value| (url.clone(), value))
+                .map_err(|e| format!("Invalid JSON in resolved schema for '{}': {}", url, e))
+        })
+        .collect()
+}
+
+/// Builds a validator against `resolved_schemas` and returns the external
+/// URIs it asked for that the map did not contain, sorted and deduplicated.
+///
+/// The validator resolves each `$ref` against its base URI, drops fragments,
+/// only follows real subschema locations and serves the official meta-schemas
+/// itself, so these are exactly the documents a later
+/// `compile_schema_with_resolved_schemas/3` call needs.  Build errors are not
+/// reported here; the compile reports them.
+#[rustler::nif]
+fn unresolved_refs(
+    env: Env,
+    schema_json: String,
+    options: ValidationOptionsStruct,
+    resolved_schemas: HashMap<String, String>,
+) -> Term {
+    let parsed = serde_json::from_str::<Value>(&schema_json)
+        .map_err(|e| ("json_parse_error", e.to_string()))
+        .and_then(|schema| {
+            parse_resolved_schemas(resolved_schemas)
+                .map(|resolved| (schema, resolved))
+                .map_err(|message| ("json_parse_error", message))
+        });
+
+    let (schema_value, parsed_schemas) = match parsed {
+        Ok(parsed) => parsed,
+        Err((error_type, message)) => {
+            let error_map = rustler::types::map::map_new(env)
+                .map_put("type".encode(env), error_type.encode(env))
+                .unwrap()
+                .map_put("message".encode(env), message.encode(env))
+                .unwrap();
+            return (atoms::error(), error_map).encode(env);
+        }
+    };
+
+    let retriever = PreloadedRetriever::new(parsed_schemas);
+    let missing = Arc::clone(&retriever.missing);
+    let _ = configured_options(&options)
+        .with_retriever(retriever)
+        .build(&schema_value);
+
+    let mut uris = missing.lock().map(|m| m.clone()).unwrap_or_default();
+    uris.sort();
+    uris.dedup();
+    (atoms::ok(), uris).encode(env)
 }
 
 rustler::init!("Elixir.ExJsonschema.Native");

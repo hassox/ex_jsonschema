@@ -80,7 +80,7 @@ defmodule ExJsonschema.CompilationError do
     %__MODULE__{
       type: :ref_resolution_error,
       message: "External schema resolution failed",
-      details: inspect(reason)
+      details: if(is_binary(reason), do: reason, else: inspect(reason))
     }
   end
 

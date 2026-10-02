@@ -10,7 +10,7 @@ Add ExJsonschema to your dependencies:
 # mix.exs
 def deps do
   [
-    {:ex_jsonschema, "~> 0.1.0"}
+    {:ex_jsonschema, "~> 0.3.0"}
   ]
 end
 ```

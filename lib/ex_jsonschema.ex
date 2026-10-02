@@ -90,6 +90,7 @@ defmodule ExJsonschema do
     MetaValidator,
     Native,
     Options,
+    RefResolution,
     ValidationError
   }
 
@@ -1088,11 +1089,14 @@ defmodule ExJsonschema do
         # Pre-resolved map supplied directly by the caller
         compile_with_resolved_map(schema_json, native_options, map)
 
-      {resolver_module, _} ->
-        # Behaviour-based resolver — extract refs, resolve, pass map to NIF
-        case resolve_all_refs(schema_json, resolver_module) do
+      {_resolver_module, _} ->
+        # Behaviour-based resolver — resolve what the validator needs, pass map to NIF
+        case RefResolution.resolve_all(schema_json, native_options, options) do
           {:ok, resolved} ->
             compile_with_resolved_map(schema_json, native_options, resolved)
+
+          {:error, %CompilationError{} = error} ->
+            {:error, error}
 
           {:error, reason} ->
             {:error, CompilationError.from_ref_resolution_error(reason)}
@@ -1165,7 +1169,7 @@ defmodule ExJsonschema do
     _ -> {:error, :no_id}
   end
 
-  # -- Ref extraction & resolution helpers --
+  # -- Ref extraction helpers --
 
   defp collect_refs(value, acc \\ MapSet.new())
 
@@ -1187,40 +1191,4 @@ defmodule ExJsonschema do
   end
 
   defp collect_refs(_scalar, acc), do: acc
-
-  defp resolve_all_refs(schema_json, resolver_module) do
-    resolve_refs_loop(schema_json, resolver_module, %{}, MapSet.new())
-  end
-
-  defp resolve_refs_loop(schema_json, resolver, resolved, seen) do
-    with {:ok, refs} <- extract_refs(schema_json) do
-      new_refs = Enum.reject(refs, &MapSet.member?(seen, &1))
-
-      if new_refs == [] do
-        {:ok, resolved}
-      else
-        case resolver.resolve(new_refs) do
-          {:ok, newly_resolved} ->
-            combined = Map.merge(resolved, newly_resolved)
-            new_seen = MapSet.union(seen, MapSet.new(new_refs))
-
-            # Recursively resolve refs found inside the newly-resolved schemas
-            Enum.reduce_while(newly_resolved, {:ok, combined, new_seen}, fn
-              {_url, sub_json}, {:ok, acc, s} ->
-                case resolve_refs_loop(sub_json, resolver, acc, s) do
-                  {:ok, new_acc} -> {:cont, {:ok, new_acc, s}}
-                  {:error, _} = err -> {:halt, err}
-                end
-            end)
-            |> case do
-              {:ok, final, _seen} -> {:ok, final}
-              {:error, _} = err -> err
-            end
-
-          {:error, reason} ->
-            {:error, reason}
-        end
-      end
-    end
-  end
 end

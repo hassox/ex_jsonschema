@@ -54,6 +54,12 @@ defmodule ExJsonschema.Native do
   def compile_schema_with_resolved_schemas(_schema_json, _options, _resolved_schemas),
     do: :erlang.nif_error(:nif_not_loaded)
 
+  # External URIs a build against the resolved schemas asked for but lacked
+  @spec unresolved_refs(String.t(), map(), %{String.t() => String.t()}) ::
+          {:ok, [String.t()]} | {:error, map()}
+  def unresolved_refs(_schema_json, _options, _resolved_schemas),
+    do: :erlang.nif_error(:nif_not_loaded)
+
   # Meta-validation
   def meta_is_valid(_schema_json), do: :erlang.nif_error(:nif_not_loaded)
   def meta_validate(_schema_json), do: :erlang.nif_error(:nif_not_loaded)

@@ -73,6 +73,24 @@ defmodule ExJsonschema.Options do
   """
   @type external_schemas :: :ignore | :http | %{String.t() => String.t()}
 
+  @typedoc """
+  External `$ref` URIs a `ref_resolver` may be asked for.
+
+  - `:all` - No restriction (default)
+  - A list of entries, each either:
+    - a domain such as `"schemas.example.com"`, allowing any `http`/`https`
+      URI on exactly that host (case-insensitive, any port)
+    - an absolute URI such as `"https://example.com/person.json"`, allowing
+      exactly that document (a fragment on the entry is ignored)
+
+  When the validator needs a URI outside the list, compilation fails with a
+  `:ref_resolution_error` naming it and the resolver is never asked for it.
+  The official `json-schema.org` meta-schemas are bundled with the validator
+  and never requested, so they need not be listed. Only valid together with
+  `ref_resolver`.
+  """
+  @type allowed_refs :: :all | [String.t()]
+
   defstruct [
     # Draft specification
     draft: :auto,
@@ -90,7 +108,10 @@ defmodule ExJsonschema.Options do
     external_schemas: :ignore,
 
     # Behaviour module for resolving external $ref URIs
-    ref_resolver: nil
+    ref_resolver: nil,
+
+    # External $ref URIs the ref_resolver may be asked for
+    allowed_refs: :all
   ]
 
   @type t :: %__MODULE__{
@@ -99,7 +120,8 @@ defmodule ExJsonschema.Options do
           regex_engine: regex_engine(),
           output_format: output_format(),
           external_schemas: external_schemas(),
-          ref_resolver: module() | nil
+          ref_resolver: module() | nil,
+          allowed_refs: allowed_refs()
         }
 
   @doc """
@@ -232,7 +254,8 @@ defmodule ExJsonschema.Options do
          :ok <- validate_regex_engine(options.regex_engine),
          :ok <- validate_output_format(options.output_format),
          :ok <- validate_external_schemas(options.external_schemas),
-         :ok <- validate_ref_resolver(options.ref_resolver) do
+         :ok <- validate_ref_resolver(options.ref_resolver),
+         :ok <- validate_allowed_refs(options.allowed_refs, options.ref_resolver) do
       {:ok, options}
     end
   end
@@ -269,4 +292,22 @@ defmodule ExJsonschema.Options do
 
   defp validate_ref_resolver(other),
     do: {:error, "Invalid ref_resolver: #{inspect(other)}. Must be nil or a module"}
+
+  defp validate_allowed_refs(:all, _ref_resolver), do: :ok
+
+  defp validate_allowed_refs(entries, nil) when is_list(entries),
+    do: {:error, "allowed_refs only applies together with a ref_resolver"}
+
+  defp validate_allowed_refs(entries, _ref_resolver) when is_list(entries) do
+    case Enum.reject(entries, &(is_binary(&1) and &1 != "")) do
+      [] ->
+        :ok
+
+      invalid ->
+        {:error, "Invalid allowed_refs entries: #{inspect(invalid)}. Must be non-empty strings"}
+    end
+  end
+
+  defp validate_allowed_refs(other, _ref_resolver),
+    do: {:error, "Invalid allowed_refs: #{inspect(other)}. Must be :all or a list of strings"}
 end

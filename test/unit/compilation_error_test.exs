@@ -218,7 +218,7 @@ defmodule ExJsonschema.CompilationErrorTest do
              ]
 
       assert is_binary(error.message)
-      assert error.details == nil or is_binary(error.details)
+      assert is_binary(error.details)
     end
   end
 end

@@ -22,6 +22,18 @@ defmodule ExJsonschema.ExternalSchemasTest do
       schema = ~s({"$ref": "https://nonexistent.example.com/schema.json"})
       assert {:ok, _compiled} = ExJsonschema.compile(schema, external_schemas: :ignore)
     end
+
+    test "official meta-schemas of another draft are enforced, not ignored" do
+      schema =
+        Jason.encode!(%{
+          "$schema" => "https://json-schema.org/draft/2020-12/schema",
+          "$ref" => "http://json-schema.org/draft-07/schema#"
+        })
+
+      assert {:ok, compiled} = ExJsonschema.compile(schema)
+      assert :ok = ExJsonschema.validate(compiled, ~s({"type": "object"}))
+      assert {:error, _} = ExJsonschema.validate(compiled, ~s({"type": 5}))
+    end
   end
 
   describe "external_schemas: pre-resolved map" do

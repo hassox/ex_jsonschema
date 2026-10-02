@@ -1,7 +1,7 @@
 defmodule ExJsonschema.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.3.0"
   @source_url "https://github.com/hassox/ex_jsonschema"
   @description "High-performance JSON Schema validation for Elixir using Rust"
 
@@ -12,6 +12,8 @@ defmodule ExJsonschema.MixProject do
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       config_path: "config/config.exs",
+      # test/support is loaded by test_helper.exs, not run as tests
+      test_ignore_filters: [&String.starts_with?(&1, "test/support/")],
       deps: deps(),
       description: @description,
       package: package(),

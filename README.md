@@ -16,7 +16,7 @@ ExJsonschema validates JSON against schemas using a battle-tested Rust engine. I
 
 ```elixir
 def deps do
-  [{:ex_jsonschema, "~> 0.1.1"}]
+  [{:ex_jsonschema, "~> 0.3.0"}]
 end
 ```
 
@@ -65,6 +65,12 @@ Schemas that use `$ref` to reference external URLs are fully supported. By defau
 
 # Behaviour-based resolver: handles transitive refs automatically
 {:ok, compiled} = ExJsonschema.compile(schema, ref_resolver: MyApp.SchemaResolver)
+
+# ...optionally limited to allowed domains or exact schema URIs
+{:ok, compiled} = ExJsonschema.compile(schema,
+  ref_resolver: MyApp.SchemaResolver,
+  allowed_refs: ["schemas.example.com", "https://example.org/order.json"]
+)
 
 # Inspect what refs a schema needs
 {:ok, refs} = ExJsonschema.extract_refs(schema)
